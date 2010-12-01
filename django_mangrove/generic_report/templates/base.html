@@ -1,0 +1,92 @@
+{% load i18n %}
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" >
+
+    <head>
+        <title>{% block title %}{% endblock %} - {% trans "Mangrove" %}</title>
+        
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <link rel="stylesheet" href="{{ MEDIA_URL }}static/generic_report/stylesheets/blueprint/screen.css" type="text/css" media="screen"  />
+        <link rel="stylesheet" href="{{ MEDIA_URL }}static/generic_report/stylesheets/style.css" type="text/css" media="screen"  />
+        <script type="text/javascript" src="{{ MEDIA_URL }}common/js/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="{{ MEDIA_URL }}common/js/jquery-ui-1.8.5.custom.min.js"></script>
+        <script type="text/javascript" src="{{ MEDIA_URL }}common/js/behavior.js"></script>
+    </head>
+    
+    <body id='mangrove'>
+        
+        {% load i18n %}
+        
+        <div id="{% block page-id %}{% endblock %}" > 
+        
+            <div id='header'>
+            
+                <div id='header-top' />
+                
+                    <p class='logout-link'>
+                        <a href="{% url ntd-logout %}">{% trans "Logout "%}</a>
+                     </p>
+                
+                    <h1>{% trans "Malaria management tool" %}</h1>
+            
+                    <ul id="lang-switcher">
+                        {% if LANGUAGE_CODE == 'fr'%}
+                        <li>
+                            Français
+                        </li>
+                        <li>
+                            <a href="{% url switch-lang %}?lang_code=en">
+                            Anglais
+                            </a>
+                        </li>
+                        {% else %}
+                        <li>
+                            <a href="{% url switch-lang %}?lang_code=fr">
+                            Français
+                            </a>
+                        </li>
+                        <li>
+                            Anglais
+                        </li>
+                        {% endif %}
+                    </ul>
+                
+                </div>
+            
+                <ul id="menu">
+                
+                    
+                    <li {% if 'dashboard' in request.view_name %}class='selected'{% endif %} >
+                        <a href="{% url reports-list %}">{% trans "Home" %}</a>
+                    </li>
+
+                    {% if user.is_superuser %}
+                    <li>
+                        <a href="{% url rapidsms-dashboard %}">
+                        {% trans "RapidSMS admin" %}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url admin:index %}">
+                        {% trans "Django admin" %}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url xforms %}">
+                        {% trans "Xforms admin" %}
+                        </a>
+                    </li>
+                    {% endif %}
+                
+                </ul>
+            
+            </div>
+        
+            <div id='content' class="container">
+            {% block content %}{% endblock %}
+            </div>
+        </div>
+        
+    </body>
+    
+</html>

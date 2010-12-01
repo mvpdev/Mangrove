@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block page-id %}edit-campaign{% endblock %}
+
+{% block title %}{% trans "Edit a campaign" %}{% endblock %}
+
+{% block content %}
+
+    <p><a href="{% url campaigns-list %}"><< {% trans "Campaigns list" %}</a></a>
+
+    <h2>{% trans "Edit a campaign" %}</h2>
+
+    {{ campaign_form.errors }}
+
+    <!-- todo improve form ergonomics -->
+    
+    <form method='post' action='{{ campaign.get_absolute_url }}' >
+    
+    {% csrf_token %}
+    
+    <p>
+        <label>{% trans "Name" %}</label>: {{ campaign_form.name }} 
+        <label>{% trans "Start date" %}</label>: {{ campaign_form.start_date }}
+    </p>
+    <p>
+        <label>{% trans "Drug pack" %}</label>: {{ campaign_form.drugs_pack }} 
+    </p>
+    <h3>{% trans "Areas" %}</h3>
+
+    <table>
+    {% for location in locations %}
+        <tr>
+            <td>
+                <input type="checkbox" name="locations" value="{{ location.pk }}" 
+            
+                {% for result in results %}
+                    {% if result.area == location and not result.disabled %}
+                        checked="checked"
+                    {% endif %}
+                {% endfor %}    
+                
+            /></td>
+            <td>{{ location.as_data_source.data_collection.parent }}</td> 
+            <td>{{ location.as_data_source.data_collection }}</td>      
+            <td>{{ location.code }} - {{ location }}</td>     
+        </tr>
+    {% endfor %}
+    </table>
+
+    <input type='submit' value='{% trans "Save" %}'>
+    
+    </form>
+
+{% endblock %}

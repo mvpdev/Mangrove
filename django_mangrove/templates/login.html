@@ -1,0 +1,57 @@
+{% load i18n %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>{% trans "Login" %} - {% trans "NTD Management" %}</title>
+<link rel="stylesheet" href="{{ MEDIA_URL }}static/generic_report/stylesheets/blueprint/screen.css" type="text/css" media="screen"  />
+<link rel="stylesheet" href="{{ MEDIA_URL }}static/generic_report/stylesheets/style.css" type="text/css" media="screen"  />
+
+</head>
+<body id="ntd-login"> 
+
+
+ 
+<!-- Start: login-holder -->
+<div id="login-holder" class='container prepend-8'>
+
+	<h1>{% trans "Mangrove" %}</h1>
+	
+	<div id="loginbox" class="span-8 last append-16">
+	
+	    <form id="login-inner" class='span-10' 
+	          method="post" action="{% url ntd-login %}">
+	    {% csrf_token %}
+		<p>
+			<label>{% trans "Username" %}</label>
+			<input type="text"  class="login-inp" id="id_username" 
+			       name="username" maxlength="30" />
+		</p>
+		<p>
+			<label>{% trans "Password" %}</label>
+			<input type="text"  class="login-inp" id="id_password" 
+			       name="password" maxlength="30" />
+		</p>
+		
+		<p class='submit'><button type="submit" class="submit-login"  /></p>
+	    
+	    </form>
+	
+    </div>
+    
+	<ul class="login-error span-8 last" >
+	{% for field, errors in form.errors.iteritems %}
+	    <li>{% if field != '__all__' %}<strong>{{ field }}: </strong>{% endif %}
+	        {{ errors.0 }}
+	    </li>
+	{% endfor %}
+	</ul>
+   
+ <!--  end loginbox -->
+ 
+
+</div>
+<!-- End: login-holder -->
+</body>
+</html>

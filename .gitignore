@@ -1,0 +1,12 @@
+*.pyc
+*.db
+*.sqlite*
+~*
+*.orig
+private
+*.log
+*.log.*
+*.mo
+local_settings.py
+doc
+/virtualenv
