@@ -36,7 +36,6 @@ def report_results(request, id):
 
     header = report.get_header()
     body = report.get_body(start_date, end_date)
-    print body
         
     ctx = locals()
 

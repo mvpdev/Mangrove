@@ -9,5 +9,6 @@ import eav
 admin.site.register(Report)
 admin.site.register(Record)  
 admin.site.register(Indicator)
+admin.site.register(Parameter)
 
 eav.register(Record)
