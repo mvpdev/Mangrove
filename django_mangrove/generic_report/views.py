@@ -33,9 +33,10 @@ def report_results(request, id):
     end_date = datetime(year, 12, 31, 0, 0)
 
     report = Report.objects.get(pk=id)
+    default_view = report.views.all()[0]
 
-    header = report.get_header()
-    body = report.get_body(start_date, end_date)
+    header = default_view.get_header()
+    body = default_view.get_body(start_date, end_date)
         
     ctx = locals()
 

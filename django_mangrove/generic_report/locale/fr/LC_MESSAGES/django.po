@@ -3,20 +3,21 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 # FULL NAME <EMAIL@ADDRESS>, 2010.
+# Kevin Samuel <info.ksamuel@gmail.com>, 2010.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: 1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2010-10-12 19:42+0200\n"
-"PO-Revision-Date: 2010-10-12 19:42+0200\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2010-12-03 11:53+0100\n"
+"Last-Translator: Kevin Samuel <info.ksamuel@gmail.com>\n"
+"Language-Team: Français <info.ksamuel@gmail.com>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n>1;\n"
+"Content-Transfer-Encoding: UTF-8\n"
+"Plural-Forms: ?\n"
 
 #: forms.py:28
 msgid "You must select at least one location"
@@ -49,7 +50,7 @@ msgstr "lot de médicaments"
 #: models.py:36
 #, python-format
 msgid "%(name)s (starts on %(date)s)"
-msgstr "%(name)s (démarrée le %(date)s)"
+msgstr "%(name)s (démarré le %(date)s)"
 
 #: models.py:37 handlers/vil.py:111 handlers/vil.py:112 handlers/vil.py:153
 #: handlers/vil.py:154
@@ -603,7 +604,8 @@ msgid "delete"
 msgstr "supprimer"
 
 #: templates/campaigns-list.html:32 templates/campaigns_results.html:19
-#: templates/create_campaign.html:7 templates/mangrove_dashboard#mangrove.html:19
+#: templates/create_campaign.html:7
+#: templates/mangrove_dashboard#mangrove.html:19
 msgid "Create a campaign"
 msgstr "Ajouter une campagne"
 

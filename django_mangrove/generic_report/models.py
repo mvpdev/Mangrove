@@ -39,15 +39,41 @@ class Report(models.Model):
     frequency = models.CharField(max_length=24, verbose_name=__(u'frequency'),
                                  choices=FREQUENCY_CHOICES)
                                 
+    def __unicode__(self):
+        return _(u'%(name)s (starts on %(date)s)') % {'name': self.name,
+               'date': self.start_date.strftime(_('%m/%d/%Y'))}
+
+
+# todo: check that indicators are only from the report indicator
+# todo: add indicator orders
+class ReportView(models.Model):
+
+    class Meta:
+        verbose_name = __('report view')
+        verbose_name_plural = __('report views')
+        unique_together = (('report', 'name'),)
+
+    report = report =  models.ForeignKey(Report, related_name='views') 
+    name = models.CharField(max_length=64, 
+                            verbose_name=__(u'name'),
+                            default=__('default'))
+    indicators = models.ManyToManyField('Indicator', 
+                                        verbose_name=__(u'indicators'),
+                                        related_name='views', 
+                                        blank=True, null=True,
+                                        symmetrical=False)
+
+
     def get_header(self):
         return [indic.name for indic in self.indicators.all()]
+      
         
     # cache that
     def get_body(self, start_date, end_date):
         body = []
-        records = self.record_set.all().filter(date__gte=start_date, 
-                                           date__lte=end_date,)\
-                                   .order_by('date')
+        records = self.report.records.all().filter(date__gte=start_date, 
+                                                   date__lte=end_date,)\
+                                           .order_by('date')
         indicators = self.indicators.all()
         
         # todo: put than in an ordered dict
@@ -59,11 +85,11 @@ class Report(models.Model):
         
     def footer(self):
         return []
-
+        
+        
     def __unicode__(self):
-        return _(u'%(name)s (starts on %(date)s)') % {'name': self.name,
-               'date': self.start_date.strftime(_('%m/%d/%Y'))}
-
+        return _('View "%(view)s" of report "%(report)s"') % {
+                 'view': self.name, 'report': self.report}
 
 
 class Record(models.Model):
@@ -71,10 +97,11 @@ class Record(models.Model):
     date = models.DateField(default=datetime.datetime.today,
                                   verbose_name=__(u'date'))
     validated = models.BooleanField(default=False)
-    report =  models.ForeignKey(Report) 
+    report =  models.ForeignKey(Report, related_name='records') 
     
     def __unicode__(self):
-        return "# %s" % self.pk
+        return _("Record %(record)s (sent on %(date)s) of report %(report)s") % {
+                 'record': self.pk, 'report': self.report, 'date': self.date}
 
 
 class Parameter(models.Model):
@@ -301,11 +328,12 @@ class DifferenceIndicator(Indicator):
 # we can't make that in the class definition as the following classes are not
 # defined yet but be can't put indicator here since they inherit from it
 Indicator.STRATEGY_CHOICES = (('value', ValueIndicator), 
-                        ('ratio',  RatioIndicator),
-                        ('average', AverageIndicator),
-                        ('sum', SumIndicator),
-                        ('product', ProductIndicator),
-                        ('difference', DifferenceIndicator),)    
+                                ('ratio',  RatioIndicator),
+                                ('average', AverageIndicator),
+                                ('sum', SumIndicator),
+                                ('product', ProductIndicator),
+                                ('difference', DifferenceIndicator),
+                                ('rate', RateIndicator))    
                         
                         
        
