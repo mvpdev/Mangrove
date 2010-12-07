@@ -8,17 +8,10 @@ from django.http import HttpResponse
 from django.shortcuts import render_to_response, redirect, HttpResponseRedirect
 from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator, InvalidPage, EmptyPage
-from django.db.models import Sum
 from django.conf import settings
 from django.utils.translation import check_for_language
 
-
 from .models import Report
-
-from simple_locations.models import Area, AreaType
-
-
 
 
 @login_required
@@ -29,14 +22,11 @@ def report_results(request, id):
     except ValueError:
         year = 2010
         
-    start_date = datetime(year, 1, 1)
-    end_date = datetime(year, 12, 31, 0, 0)
-
     report = Report.objects.get(pk=id)
     default_view = report.views.all()[0]
 
-    header = default_view.get_header()
-    body = default_view.get_body(start_date, end_date)
+    header = default_view.get_labels()
+    body = default_view.get_data_matrice()
         
     ctx = locals()
 

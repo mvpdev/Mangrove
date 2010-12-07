@@ -19,7 +19,7 @@ from code_generator.fields import CodeField
     you are new to the code.
 """
 
-
+# todo: remove start date and end dates and code and frenquency
 # todo: add constraint to a report
 class Report(models.Model):
     """
@@ -33,12 +33,6 @@ class Report(models.Model):
         verbose_name = __('report')
         app_label = 'generic_report'
         
-        
-    FREQUENCY_CHOICES = (
-                         #('weekly', __('Weekly')),
-                         #('monthly', __('Monthly')),
-                         #('quaterly', __('Quaterly')),
-                         ('yearly', __('Yearly')),)
 
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
     code = CodeField(verbose_name=__("code"), max_length=12, prefix='r')
@@ -86,16 +80,14 @@ class ReportView(models.Model):
                                         symmetrical=False)
 
 
-    def get_header(self):
+    def get_labels(self):
         return [indic.name for indic in self.indicators.all()]
       
         
     # cache that
-    def get_body(self, start_date, end_date):
-        body = []
-        records = self.report.records.all().filter(date__gte=start_date, 
-                                                   date__lte=end_date,)\
-                                           .order_by('date')
+    def get_data_matrice(self):
+        matrice = []
+        records = self.report.records.all()
         indicators = self.indicators.all()
         
         # todo: put than in an ordered dict
@@ -103,18 +95,19 @@ class ReportView(models.Model):
             d = SortedDict()
             for indic in indicators:
                 d[indic.name] = indic.value(record)
-            body.append(d)
+            matrice.append(d)
             
-        return body
+        return matrice
             
         
-    def footer(self):
+    def get_extracted_data(self):
         return []
         
         
     def __unicode__(self):
         return _('View "%(view)s" of report "%(report)s"') % {
                  'view': self.name, 'report': self.report}
+
 
 
 class Record(models.Model):
@@ -236,6 +229,16 @@ class Indicator(models.Model):
             raise ValueError('Can not get value with an unsaved indicator')
         
         return self.strategy.value(self, record)
+    
+    
+    @classmethod
+    def create_from_attribute(cls, attr, indicator_type='value', params=()):
+        ind = Indicator.objects.create(type=indicator_type, concept=attr, 
+                                       name=attr.name)
+        for order, indicator in enumerate(params):
+            Parameter.objects.create(param_of=ind, indicator=indicator, 
+                                     order=order)
+        return ind   
     
     
     def __unicode__(self):
