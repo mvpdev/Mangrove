@@ -9,6 +9,7 @@ import eav.models
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
 from django.utils.datastructures import SortedDict
+from django.db.models.signals import m2m_changed
 
 from code_generator.fields import CodeField
 
@@ -44,6 +45,7 @@ class Report(models.Model):
     def __unicode__(self):
         return _(u'%(name)s (starts on %(date)s)') % {'name': self.name,
                'date': self.start_date.strftime(_('%m/%d/%Y'))}
+
 
 
 # todo: check that indicators are only from the report indicator
@@ -102,11 +104,45 @@ class ReportView(models.Model):
         
     def get_extracted_data(self):
         return []
+       
+       
+    @classmethod
+    def create_from_report(cls, report, name='Default'):
+        """
+            Create a view fromt the given report. The view will be attached
+            to this report and reference the same indicators.
+        """
         
+        view = ReportView.objects.create(report=report, name=name)
+        for ind in report.indicators.all():
+            view.indicators.add(ind)
+        return view
+  
+  
         
     def __unicode__(self):
         return _('View "%(view)s" of report "%(report)s"') % {
                  'view': self.name, 'report': self.report}
+
+
+def add_indicator_to_report(sender, **kwargs):
+    """
+        Attached to a the the event m2m_change of report views, it ensure that
+        everytime you add an indicator in a view, it's added its related
+        report.
+    """
+    # we create this shortcut only in one direction, the most common
+    # where instance is the view and an indicator is added
+    if not kwargs['reverse'] and kwargs['action'] == 'post_add': 
+        view = kwargs['instance']
+        indicator_class = kwargs['model']
+        for pk in kwargs['pk_set']:
+            view.report.indicators.add(indicator_class.objects.get(pk=pk))
+        
+
+m2m_changed.connect(add_indicator_to_report,
+                   sender=ReportView.indicators.through, 
+                   dispatch_uid='add_indicator_to_report')
 
 
 
@@ -233,12 +269,51 @@ class Indicator(models.Model):
     
     @classmethod
     def create_from_attribute(cls, attr, indicator_type='value', params=()):
+        """
+            Create an indicator from the given EAV attribute. The indicator
+            will be linked to this indicator and have the same name.
+            
+            By default, the indicator is a 'value' indicator. Pass type and
+            a list of indicators as params to choose a different indicator type.
+            Parameter order will be the same as the order of items in 'params'.
+        """
         ind = Indicator.objects.create(type=indicator_type, concept=attr, 
                                        name=attr.name)
         for order, indicator in enumerate(params):
-            Parameter.objects.create(param_of=ind, indicator=indicator, 
-                                     order=order)
+            ind.add_param(indicator, order)
         return ind   
+
+
+    @classmethod
+    def create_with_attribute(cls, name, attr_type=eav.models.Attribute.TYPE_INT, 
+                              indicator_type='value', params=()):
+        """
+            Create an indicator and the related EAV attribute. The indicator
+            will be linked to this indicator wich will have the same name.
+            
+            This first attempts to create the attribute (to let the creation
+            fail if it needs to) then it calls 'create_from_attribute' on it.
+        """
+        
+        attr, created = eav.models.Attribute.objects.get_or_create(name=name, 
+                                                          datatype=attr_type)
+        return cls.create_from_attribute(attr, indicator_type, params)
+    
+    
+    def add_param(self, indicator, order=None):
+        """
+            Add the given indicator as a parameter of the current one. If no
+            order is provided, the order will be calculated by taking the 
+            highest parameter order for all params of this indicators and 
+            adding 1.
+        """
+        if not order:
+            try:
+                order = self.params.latest('order').order  + 1
+            except Parameter.DoesNotExist:
+                order = 1
+        
+        Parameter.objects.create(param_of=self, indicator=indicator, order=order)
     
     
     def __unicode__(self):

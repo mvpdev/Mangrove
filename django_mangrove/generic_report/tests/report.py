@@ -20,10 +20,19 @@ class ReportTests(TestCase):
                                                datatype=Attribute.TYPE_INT)[0]
         self.height_indicator = Indicator.create_from_attribute(self.height)
 
+        self.width = Attribute.objects.get_or_create(name='Width', 
+                                               datatype=Attribute.TYPE_INT)[0]
+        self.width_indicator = Indicator.create_from_attribute(self.width)
+
         self.report.indicators.add(self.height_indicator)
+        self.report.indicators.add(self.width_indicator)
+        
+        self.view = ReportView.create_from_report(report=self.report, 
+                                                  name='main')
         
         self.record = Record.objects.get_or_create(report=self.report)
         self.record.eav.height = 10
+        self.record.eav.width = 2
         self.record.save()
         
 
@@ -67,7 +76,7 @@ class ReportTests(TestCase):
 
     def test_get_data_matrice_from_report(self):
     
-        report_view = ReportView.objects.get_or_create(report=self.report)[0]
+        report_view = ReportView.objects.create(report=self.report)
         report_view.indicators.add(self.height_indicator)
         
         self.assertEqual(report_view.get_labels(), ['Height'])
@@ -75,8 +84,120 @@ class ReportTests(TestCase):
         
     
     def test_create_view_from_report(self):
-        pass
+        report_view = ReportView.create_from_report(report=self.report)
         
+        self.assertEqual(report_view.get_labels(), ['Height', 'Width'])
+        self.assertEqual(report_view.get_data_matrice(), [{'Height': 10,
+                                                           'Width': 2}])
         
-    def test_create_from_attribute_with_params(self):
-        pass  
+   
+    def test_create_indictor_with_attribute(self):
+        ind = Indicator.create_with_attribute('Time')
+        
+        self.assertEqual(ind.name, 'Time')
+        self.assertEqual(ind.concept.name, 'Time')   
+        self.assertEqual(ind.concept.datatype, Attribute.TYPE_INT)   
+ 
+ 
+    def test_calculated_indicator(self):
+        
+        area = Attribute.objects.get_or_create(name='Area', 
+                                               datatype=Attribute.TYPE_INT)[0]
+        i = Indicator.objects.create(type='product', concept=area, name='Area')
+        self.report.indicators.add(i)
+        self.view.indicators.add(i)
+        
+        Parameter.objects.create(param_of=i, order=1, 
+                                 indicator=self.height_indicator)
+                                 
+        Parameter.objects.create(param_of=i, order=2, 
+                                 indicator=self.width_indicator)
+        
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
+        self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
+                                                           'Width': 2, 
+                                                           'Area': 20, }]) 
+       
+        
+    def test_create_indic_from_attribute_with_params(self):
+        area = Attribute.objects.get_or_create(name='Area', 
+                                               datatype=Attribute.TYPE_INT)[0]
+        i = Indicator.create_from_attribute(area, 'product',
+                                            (self.height_indicator, 
+                                             self.width_indicator))
+
+        self.report.indicators.add(i)
+        self.view.indicators.add(i)
+
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
+        self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
+                                                           'Width': 2, 
+                                                           'Area': 20, }]) 
+
+        
+    def test_create_indic_with_attribute_with_params(self):
+  
+        i = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                            'product', (self.height_indicator, 
+                                                        self.width_indicator))
+
+        self.report.indicators.add(i)
+        self.view.indicators.add(i)
+
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
+        self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
+                                                           'Width': 2, 
+                                                           'Area': 20, }]) 
+
+        
+    def test_add_param(self):
+                   
+        area = Attribute.objects.get_or_create(name='Area', 
+                                               datatype=Attribute.TYPE_INT)[0]
+        i = Indicator.objects.create(type='product', concept=area, name='Area')
+        
+        i.add_param(self.height_indicator, 2)
+        i.add_param(self.width_indicator)
+        
+        self.report.indicators.add(i)
+        self.view.indicators.add(i)
+        
+        params = i.params.all()
+        
+        self.assertEqual(params.count(), 2)
+        self.assertEqual(params[0].order, 2)
+        self.assertEqual(params[1].order, 3)
+        
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
+        self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
+                                                           'Width': 2, 
+                                                           'Area': 20, }]) 
+        
+    def test_add_an_indicator_to_a_view_add_it_to_its_report(self):
+        i = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                            'product', (self.height_indicator, 
+                                                        self.width_indicator))
+
+        self.view.indicators.add(i)
+        
+        self.assertTrue(i in self.report.indicators.all())
+
+        
+    def test_calculated_indicator_with_calculated_indicator_as_param(self):
+        i1 = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                            'product', (self.height_indicator, 
+                                                        self.width_indicator))
+                                                        
+        self.view.indicators.add(i1)
+
+        i2 = Indicator.create_with_attribute('Average', Attribute.TYPE_INT, 
+                                            'ratio', (self.height_indicator, 
+                                                      i1))
+        self.view.indicators.add(i2)
+        
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 
+                                                  'Area', 'Average'])
+        self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
+                                                           'Width': 2, 
+                                                           'Area': 20, 
+                                                           'Average': 0.5}]) 
