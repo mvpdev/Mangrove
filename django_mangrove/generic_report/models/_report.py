@@ -3,25 +3,35 @@
 # vim: ai ts=4 sts=4 et sw=4
 
 import datetime
-import re
 import operator
+import eav.models
 
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
-from django.db.models import Q
-from django.db.models import permalink
-
-import eav.models
-
-from simple_locations.models import Area
 
 from code_generator.fields import CodeField
 
 
+"""
+    Reports (a group of data), report views (the way to display the data) and
+    records (a batch of raw data). You may want to start with reports if 
+    you are new to the code.
+"""
+
+
+# todo: add constraint to a report
 class Report(models.Model):
+    """
+        Central object for this app, it is the link between all other 
+        components. A report declare several indicators (see indicator.py) 
+        and contains several data records. Views tell how to display 
+        these records.
+    """
 
     class Meta:
         verbose_name = __('report')
+        app_label = 'generic_report'
+        
         
     FREQUENCY_CHOICES = (
                          #('weekly', __('Weekly')),
@@ -36,9 +46,6 @@ class Report(models.Model):
     end_date = models.DateField(blank=True, null=True,
                                 verbose_name=__(u'end date'))
 
-    frequency = models.CharField(max_length=24, verbose_name=__(u'frequency'),
-                                 choices=FREQUENCY_CHOICES)
-                                
     def __unicode__(self):
         return _(u'%(name)s (starts on %(date)s)') % {'name': self.name,
                'date': self.start_date.strftime(_('%m/%d/%Y'))}
@@ -47,11 +54,25 @@ class Report(models.Model):
 # todo: check that indicators are only from the report indicator
 # todo: add indicator orders
 class ReportView(models.Model):
+    """
+        A way to display the data of the report. Declare:
+        
+        - pagination (see paginator.py), meaning wich 
+          portion of data you want to see. E.G: by batch of 10 records.
+        - filtering (see filter.py), meaning which type of data you want to see.
+          E.G: only data with value X < 45.
+        - aggregation (see agregator.py), meaning how grouped you want the 
+          data to be. E.G: grouped by date.
+        - ordering (see orderer.py), meaning in which order you the data to
+          appear. E.G: in alphabetical order.
+    """
 
     class Meta:
         verbose_name = __('report view')
         verbose_name_plural = __('report views')
         unique_together = (('report', 'name'),)
+        app_label = 'generic_report'
+        
 
     report = report =  models.ForeignKey(Report, related_name='views') 
     name = models.CharField(max_length=64, 
@@ -93,6 +114,18 @@ class ReportView(models.Model):
 
 
 class Record(models.Model):
+    """
+        A batch of raw data. A record hold data using the django-eav app. 
+        The app never access the report directly, each piece of data is 
+        extracted from the record using an indicator objects (see indicator.py).
+    """
+
+
+    class Meta:
+        verbose_name = __('record')
+        verbose_name_plural = __('records')
+        app_label = 'generic_report'
+
 
     date = models.DateField(default=datetime.datetime.today,
                                   verbose_name=__(u'date'))
@@ -112,6 +145,8 @@ class Parameter(models.Model):
     
     class Meta:
         unique_together = (('param_of', 'indicator', 'order'))
+        app_label = 'generic_report'
+        
     
     param_of = models.ForeignKey('Indicator', related_name='params') 
     indicator = models.ForeignKey('Indicator', related_name='as_params') 
@@ -123,7 +158,6 @@ class Parameter(models.Model):
 
 # todo: add checks for parameter number
 # todo: add checks for calculation dependancies
-# todo: refactor this as several classes ?
 class Indicator(models.Model):
     """
         A type of value for the report. A report will have several indicator,
@@ -138,6 +172,7 @@ class Indicator(models.Model):
 
     class Meta:
         verbose_name = __('indicator')
+        app_label = 'generic_report'
 
 
     TYPE_CHOICES = (('value', __('Value')), 
@@ -208,6 +243,8 @@ class ValueIndicator(Indicator):
 
     class Meta:
         proxy = True
+        app_label = 'generic_report'
+        
         
     @staticmethod
     def value(instance, record):
@@ -224,6 +261,8 @@ class RatioIndicator(Indicator):
 
     class Meta:
         proxy = True   
+        app_label = 'generic_report'
+        
         
     # todo: add checks for ratio to accept 2 and only two args
     @staticmethod
@@ -242,6 +281,8 @@ class RateIndicator(Indicator):
 
     class Meta:
         proxy = True 
+        app_label = 'generic_report'
+        
         
     # todo: add checks for rate to accept 2 and only two args
     @staticmethod
@@ -261,6 +302,8 @@ class AverageIndicator(Indicator):
 
     class Meta:
         proxy = True 
+        app_label = 'generic_report'
+        
         
     @staticmethod
     def value(instance, record):
@@ -278,6 +321,8 @@ class SumIndicator(Indicator):
 
     class Meta:
         proxy = True 
+        app_label = 'generic_report'
+        
         
     @staticmethod
     def value(instance, record):
@@ -294,6 +339,8 @@ class ProductIndicator(Indicator):
 
     class Meta:
         proxy = True 
+        app_label = 'generic_report'
+        
         
     @staticmethod
     def value(instance, record):
@@ -311,6 +358,8 @@ class DifferenceIndicator(Indicator):
 
     class Meta:
         proxy = True 
+        app_label = 'generic_report'
+        
         
     @staticmethod
     def value(instance, record):
@@ -333,7 +382,4 @@ Indicator.STRATEGY_CHOICES = (('value', ValueIndicator),
                                 ('sum', SumIndicator),
                                 ('product', ProductIndicator),
                                 ('difference', DifferenceIndicator),
-                                ('rate', RateIndicator))    
-                        
-                        
-       
+                                ('rate', RateIndicator))   
