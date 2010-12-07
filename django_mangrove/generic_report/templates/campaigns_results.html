@@ -74,7 +74,7 @@
                 
         {% for row in body %}
             <tr>
-            {% for cell in row %}
+            {% for cell in row.itervalues %}
                 <td>{{ cell }}</td>
             {% endfor %}
             </tr>

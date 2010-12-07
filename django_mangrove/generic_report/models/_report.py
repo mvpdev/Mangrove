@@ -8,6 +8,7 @@ import eav.models
 
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
+from django.utils.datastructures import SortedDict
 
 from code_generator.fields import CodeField
 
@@ -99,7 +100,10 @@ class ReportView(models.Model):
         
         # todo: put than in an ordered dict
         for record in records:
-            body.append([indic.value(record) for indic in indicators])
+            d = SortedDict()
+            for indic in indicators:
+                d[indic.name] = indic.value(record)
+            body.append(d)
             
         return body
             
