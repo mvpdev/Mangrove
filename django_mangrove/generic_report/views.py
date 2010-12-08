@@ -2,6 +2,7 @@
 # encoding=utf-8
 # vim: ai ts=4 sts=4 et sw=4
 
+
 from datetime import datetime
 
 from django.http import HttpResponse
@@ -10,23 +11,36 @@ from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils.translation import check_for_language
+from django.core.paginator import Paginator, InvalidPage, EmptyPage
 
-from .models import Report
+from .models import Report, ReportView
 
 
 @login_required
 def report_results(request, id):
 
-    try:
-        year = int(request.GET.get('year', 2010))
-    except ValueError:
-        year = 2010
-        
     report = Report.objects.get(pk=id)
-    default_view = report.views.all()[0]
+    report_views = report.views.all().order_by('pk')
+    
+    if report_views:
+    
+        paginator = Paginator(report_views, 1) # Show 1 view per page
 
-    header = default_view.get_labels()
-    body = default_view.get_data_matrice()
+        try:
+            page = int(request.GET.get('page', '1'))
+        except ValueError:
+            page = 1
+
+        # If page request (9999) is out of range, deliver last view.
+        try:
+            page = paginator.page(page)
+        except (EmptyPage, InvalidPage):
+            page = paginator.page(page.num_pages)
+
+        view = page.object_list[0]
+
+        header = view.get_labels()
+        body = view.get_data_matrice()
         
     ctx = locals()
 

@@ -21,26 +21,27 @@
 
     <div id="dashboard-header" class="span-24 last">
 
-        <h2 id="title-prefix" class="span-24 last">{% trans "Report" %}:</h2>
+        <h2 id="title-prefix" class="span-24 last">
+            {% trans "Report" %}: {{ report.name }}
+        </h2>
         
         <div id="pagination" class="span-20" >
         
-        {% if page.has_next %}
+        {% if page.has_previous %}
          <p  class="previous" >
-            <a href="?page={{ page.next_page_number }}">
+            <a href="?page={{ page.previous_page_number }}">
                 &lt; {% trans "Previous" %}
             </a>
          </p>
         {% endif %}
         
         <h3 title={{ report.code }}>
-            <a href="{% url report-results report.pk %}?year={{ year }}">
-            {{ report.name }}</a>
+            View: <a href="#">{{ view.name|title }}</a>
         </h3> 
          
-        {% if page.has_previous %}
+        {% if page.has_next %}
         <p  class="next" >
-            <a href="?page={{ page.previous_page_number }}">
+            <a href="?page={{ page.next_page_number }}">
                 {% trans "Next" %} &gt;
             </a>
         </p>
@@ -58,8 +59,8 @@
     
     <div class="span-24 last">
    
-    
-    <table >
+    {% if header %}
+    <table>
         <thead>
         <tr>
             {% for cell in header %}
@@ -87,12 +88,15 @@
         {% endif %}
         
         </tbody>
-        
-
     
     </table>
-   
     
+    {% else %}
+    
+    <p>No indicator declared for this view. You must choose the indicator
+    you wish to display from the report.</p>
+   
+    {% endif %}
     
 {% endif %}
 
