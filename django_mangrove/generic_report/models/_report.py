@@ -71,28 +71,24 @@ class ReportView(models.Model):
         app_label = 'generic_report'
         
 
-    report = report =  models.ForeignKey(Report, related_name='views') 
+    report = models.ForeignKey(Report, related_name='views') 
     name = models.CharField(max_length=64, 
                             verbose_name=__(u'name'),
                             default=__('default'))
-    indicators = models.ManyToManyField('Indicator', 
-                                        verbose_name=__(u'indicators'),
-                                        related_name='views', 
-                                        blank=True, null=True,
-                                        symmetrical=False)
-
 
     def get_labels(self):
-        return [indic.name for indic in self.indicators.all()]
+        sis = self.selected_indicators.all().order_by('order')
+        return [si.indicator.name for si in sis]
       
-        
+
     # cache that
     def get_data_matrice(self):
+    
         matrice = []
         records = self.report.records.all()
-        indicators = self.indicators.all()
+        sis = self.selected_indicators.all().order_by('order')
+        indicators = [si.indicator for si in sis]
         
-        # todo: put than in an ordered dict
         for record in records:
             d = SortedDict()
             for indic in indicators:
@@ -115,36 +111,67 @@ class ReportView(models.Model):
         
         view = ReportView.objects.create(report=report, name=name)
         for ind in report.indicators.all():
-            view.indicators.add(ind)
+            view.add_indicator(ind)
         return view
   
   
+    # todo: create similar method for removing indicators
+    # todo: check if indicators belong to the report first
+    def add_indicator(self, indicator, order=None):
+        """
+            Add an indicator to the current view. if it doesn't exists in 
+            the associated report, add it to it too.
+            Returns the ViewIndactor object responsible for the relation
+            between the indicator and the view.
+        """
+    
+        vi = SelectedIndicator.objects.create(view=self, indicator=indicator, 
+                                          order=order)
+       
+        if indicator not in self.report.indicators.all():
+            self.report.indicators.add(indicator)
+        
+        return vi
+        
         
     def __unicode__(self):
         return _('View "%(view)s" of report "%(report)s"') % {
                  'view': self.name, 'report': self.report}
 
 
-def add_indicator_to_report(sender, **kwargs):
+# todo: refactor selected_indictor to use the through param
+class SelectedIndicator(models.Model):
     """
-        Attached to a the the event m2m_change of report views, it ensure that
-        everytime you add an indicator in a view, it's added its related
-        report.
+        Holder relationship between ReportView and Indicator.
+        Used to be able to specify an order in indicators for views.
     """
-    # we create this shortcut only in one direction, the most common
-    # where instance is the view and an indicator is added
-    if not kwargs['reverse'] and kwargs['action'] == 'post_add': 
-        view = kwargs['instance']
-        indicator_class = kwargs['model']
-        for pk in kwargs['pk_set']:
-            view.report.indicators.add(indicator_class.objects.get(pk=pk))
+    
+    class Meta:
+        app_label = 'generic_report'
+        unique_together = (('view','indicator','order'),)
+
+    view = models.ForeignKey(ReportView, related_name='selected_indicators')
+    indicator = models.ForeignKey('Indicator', related_name='selected_for')
+    order = models.IntegerField()
+    
+    def save(self, *args, **kwargs):
         
+        # by default, create and order by incrementing the previous one,
+        # or by setting it to 1 if no previous indicator exists for this view
+        if not self.order:
+            try:
+                siblings = SelectedIndicator.objects.filter(view=self.view)
+                self.order = siblings.latest('order').order  + 1
+            except SelectedIndicator.DoesNotExist:
+                self.order = 1
+        
+        models.Model.save(self, *args, **kwargs)
 
-m2m_changed.connect(add_indicator_to_report,
-                   sender=ReportView.indicators.through, 
-                   dispatch_uid='add_indicator_to_report')
-
-
+    def __unicode__(self):
+        return "Selected indicator %(order)s for '%(view)s': %(indicator)s" % {
+                'order': self.order, 'view': self.view, 
+                'indicator': self.indicator}
+    
 
 class Record(models.Model):
     """
@@ -170,6 +197,7 @@ class Record(models.Model):
                  'record': self.pk, 'report': self.report, 'date': self.date}
 
 
+# todo: make Parameter an intermediate models for m2m
 class Parameter(models.Model):
     """
         Link between a calculated indicator and it's parameter.
@@ -226,7 +254,7 @@ class Indicator(models.Model):
     report = models.ManyToManyField(Report, 
                                     verbose_name=__(u'report'),
                                     related_name='indicators', 
-                                    blank=True, null=True)
+                                    blank=True, null=True, symmetrical=False)
                                     
     type = models.CharField(max_length=64, verbose_name=__(u'type'),
                             choices=TYPE_CHOICES)
@@ -307,13 +335,15 @@ class Indicator(models.Model):
             highest parameter order for all params of this indicators and 
             adding 1.
         """
+        # todo : move the param order check in param
         if not order:
             try:
                 order = self.params.latest('order').order  + 1
             except Parameter.DoesNotExist:
                 order = 1
         
-        Parameter.objects.create(param_of=self, indicator=indicator, order=order)
+        Parameter.objects.create(param_of=self, indicator=indicator, 
+                                 order=order)
     
     
     def __unicode__(self):

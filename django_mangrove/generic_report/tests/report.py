@@ -77,7 +77,7 @@ class ReportTests(TestCase):
     def test_get_data_matrice_from_report(self):
     
         report_view = ReportView.objects.create(report=self.report)
-        report_view.indicators.add(self.height_indicator)
+        report_view.add_indicator(self.height_indicator)
         
         self.assertEqual(report_view.get_labels(), ['Height'])
         self.assertEqual(report_view.get_data_matrice(), [{'Height': 10}])
@@ -89,7 +89,24 @@ class ReportTests(TestCase):
         self.assertEqual(report_view.get_labels(), ['Height', 'Width'])
         self.assertEqual(report_view.get_data_matrice(), [{'Height': 10,
                                                            'Width': 2}])
+ 
+    def test_view_indicators_can_be_ordered(self):
+        report_view = ReportView.create_from_report(report=self.report)
+        reversed_report_view = ReportView.create_from_report(report=self.report, 
+                                                             name='reversed')
         
+        vi = reversed_report_view.selected_indicators.all()[0]
+        vi.order = 100
+        vi.save()
+
+        self.assertEqual(report_view.get_labels(), ['Height', 'Width'])
+        self.assertEqual(reversed_report_view.get_labels(), ['Width', 'Height'])
+       
+        self.assertEqual(report_view.get_data_matrice(), [{'Height': 10,
+                                                           'Width': 2}])
+        self.assertEqual(report_view.get_data_matrice(), [{'Width': 2,
+                                                           'Height': 10}])   
+   
    
     def test_create_indictor_with_attribute(self):
         ind = Indicator.create_with_attribute('Time')
@@ -105,7 +122,7 @@ class ReportTests(TestCase):
                                                datatype=Attribute.TYPE_INT)[0]
         i = Indicator.objects.create(type='product', concept=area, name='Area')
         self.report.indicators.add(i)
-        self.view.indicators.add(i)
+        self.view.add_indicator(i)
         
         Parameter.objects.create(param_of=i, order=1, 
                                  indicator=self.height_indicator)
@@ -127,7 +144,7 @@ class ReportTests(TestCase):
                                              self.width_indicator))
 
         self.report.indicators.add(i)
-        self.view.indicators.add(i)
+        self.view.add_indicator(i)
 
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
         self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
@@ -142,7 +159,7 @@ class ReportTests(TestCase):
                                                         self.width_indicator))
 
         self.report.indicators.add(i)
-        self.view.indicators.add(i)
+        self.view.add_indicator(i)
 
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
         self.assertEqual(self.view.get_data_matrice(), [{'Height': 10, 
@@ -160,7 +177,7 @@ class ReportTests(TestCase):
         i.add_param(self.width_indicator)
         
         self.report.indicators.add(i)
-        self.view.indicators.add(i)
+        self.view.add_indicator(i)
         
         params = i.params.all()
         
@@ -173,27 +190,36 @@ class ReportTests(TestCase):
                                                            'Width': 2, 
                                                            'Area': 20, }]) 
         
+        
     def test_add_an_indicator_to_a_view_add_it_to_its_report(self):
         i = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
                                             'product', (self.height_indicator, 
                                                         self.width_indicator))
 
-        self.view.indicators.add(i)
+        self.view.add_indicator(i)
+        
+        # but not if it exists already
         
         self.assertTrue(i in self.report.indicators.all())
-
         
+        self.view.add_indicator(i)
+        
+        self.assertEqual(self.report.indicators.filter(pk=i.pk).count(), 1)
+        sis = self.view.selected_indicators.filter(indicator=i)
+        self.assertEqual(sis.count(), 2)
+
+
     def test_calculated_indicator_with_calculated_indicator_as_param(self):
         i1 = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
                                             'product', (self.height_indicator, 
                                                         self.width_indicator))
                                                         
-        self.view.indicators.add(i1)
+        self.view.add_indicator(i1)
 
         i2 = Indicator.create_with_attribute('Average', Attribute.TYPE_INT, 
                                             'ratio', (self.height_indicator, 
                                                       i1))
-        self.view.indicators.add(i2)
+        self.view.add_indicator(i2)
         
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 
                                                   'Area', 'Average'])

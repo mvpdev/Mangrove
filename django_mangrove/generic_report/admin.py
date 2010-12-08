@@ -11,5 +11,6 @@ admin.site.register(Record)
 admin.site.register(Indicator)
 admin.site.register(Parameter)
 admin.site.register(ReportView)
+admin.site.register(SelectedIndicator)
 
 eav.register(Record)
