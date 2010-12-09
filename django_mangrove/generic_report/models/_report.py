@@ -33,15 +33,9 @@ class Report(models.Model):
         
 
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
-    code = CodeField(verbose_name=__("code"), max_length=12, prefix='r')
-    start_date = models.DateField(default=datetime.datetime.today,
-                                  verbose_name=__(u'start date'))
-    end_date = models.DateField(blank=True, null=True,
-                                verbose_name=__(u'end date'))
 
     def __unicode__(self):
-        return _(u'%(name)s (starts on %(date)s)') % {'name': self.name,
-               'date': self.start_date.strftime(_('%m/%d/%Y'))}
+        return _(u'%(name)s') % {'name': self.name}
 
 
 
@@ -72,6 +66,9 @@ class ReportView(models.Model):
     name = models.CharField(max_length=64, 
                             verbose_name=__(u'name'),
                             default=__('default'))
+    time_format = models.CharField(max_length=32, 
+                               verbose_name=__(u'time format'),
+                               default='%m/%d/%y')  
 
     def get_labels(self):
         sis = self.selected_indicators.all().order_by('order')
@@ -89,7 +86,7 @@ class ReportView(models.Model):
         for record in records:
             d = SortedDict()
             for indic in indicators:
-                d[indic.name] = indic.value(record)
+                d[indic.name] = indic.value(self, record)
             matrice.append(d)
             
         return matrice

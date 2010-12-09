@@ -15,6 +15,9 @@ import operator
 
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes import generic
+
 
 
 # todo: refactor selected_indictor to use the through param
@@ -28,7 +31,8 @@ class SelectedIndicator(models.Model):
         app_label = 'generic_report'
         unique_together = (('view','indicator','order'),)
 
-    view = models.ForeignKey('generic_report.ReportView', related_name='selected_indicators')
+    view = models.ForeignKey('generic_report.ReportView', 
+                             related_name='selected_indicators')
     indicator = models.ForeignKey('Indicator', related_name='selected_for')
     order = models.IntegerField()
     
@@ -89,16 +93,8 @@ class Indicator(models.Model):
     class Meta:
         verbose_name = __('indicator')
         app_label = 'generic_report'
+        get_latest_by = 'id'
 
-
-    TYPE_CHOICES = (('value', __('Value')), 
-                    ('ratio', __('Ratio')),
-                    ('average', __('Average')),
-                    ('sum', __('Sum')),
-                    ('product', __('Product')),
-                    ('difference', __('Difference')),
-                    ('rate', __('Rate')),)
-                    
 
     # make it default to concept name
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
@@ -110,17 +106,16 @@ class Indicator(models.Model):
                                     verbose_name=__(u'report'),
                                     related_name='indicators', 
                                     blank=True, null=True, symmetrical=False)
-                                    
-    type = models.CharField(max_length=64, verbose_name=__(u'type'),
-                            choices=TYPE_CHOICES)
-                                    
-                                    
-    def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
+
+    # generic relation to an subclass of indicator that will be used
+    # to implement the strategy pattern 
+    # we can't use the sub classes directly because they would be no way to
+    # get all the indicator from the reports and views   
+    strategy_type = models.ForeignKey(ContentType, null=True, blank=True)
+    strategy_id = models.PositiveIntegerField(null=True, blank=True)
+    strategy = generic.GenericForeignKey(ct_field="strategy_type", 
+                                         fk_field="strategy_id")
         
-        if self.type:
-            self.strategy = dict(self.__class__.STRATEGY_CHOICES)[self.type]
- 
 
     def __save__(self, *args, **kwargs):
         # you should not be able to change the type or the contept
@@ -131,14 +126,14 @@ class Indicator(models.Model):
             if self.concept != old_self.concept:
                 raise IntegrityError(_("The concept can not be changed anymore"))
                 
-            if self.type != old_self.type:
+            if self.strategy != old_self.strategy:
                 raise IntegrityError(_("The type can not be changed anymore"))
         except Indicator.DoesNotExist:
             pass
         models.Model.__save__(self, *args, **kwargs)
         
         
-    def value(self, record):
+    def value(self, view, record):
         """
             Return the value of this indicator for this record, using the
             proper behavior according to the indicator type.
@@ -147,11 +142,12 @@ class Indicator(models.Model):
         if not self.strategy:
             raise ValueError('Can not get value with an unsaved indicator')
         
-        return self.strategy.value(self, record)
+        return self.strategy.value(view, self, record)
     
     
     @classmethod
-    def create_from_attribute(cls, attr, indicator_type='value', params=()):
+    def create_from_attribute(cls, attr, indicator_type=None, 
+                              args=(), kwargs=None):
         """
             Create an indicator from the given EAV attribute. The indicator
             will be linked to this indicator and have the same name.
@@ -160,16 +156,21 @@ class Indicator(models.Model):
             a list of indicators as params to choose a different indicator type.
             Parameter order will be the same as the order of items in 'params'.
         """
-        ind = Indicator.objects.create(type=indicator_type, concept=attr, 
+        indicator_type = indicator_type or ValueIndicator 
+        kwargs = kwargs or {}
+         
+        real_indicator = indicator_type.objects.create(**kwargs)
+        for arg in enumerate(params):
+            real_indicator.ind.add_param(indicator, order)
+        
+        ind = Indicator.objects.create(strategy=real_indicator, concept=attr, 
                                        name=attr.name)
-        for order, indicator in enumerate(params):
-            ind.add_param(indicator, order)
-        return ind   
-
+        return ind
+        
 
     @classmethod
     def create_with_attribute(cls, name, attr_type=eav.models.Attribute.TYPE_INT, 
-                              indicator_type='value', params=()):
+                              indicator_type=None, args=(), kwargs=None):
         """
             Create an indicator and the related EAV attribute. The indicator
             will be linked to this indicator wich will have the same name.
@@ -205,148 +206,133 @@ class Indicator(models.Model):
         return self.name
 
 
-class ValueIndicator(Indicator):
+
+class IndicatorType(models.Model):
 
     class Meta:
-        proxy = True
         app_label = 'generic_report'
+    
+    proxy = generic.GenericRelation(Indicator, object_id_field="strategy_id",
+                                    content_type_field="strategy_type")
+    
+    def __unicode__(self):
+        try:
+            proxy = self.proxy.latest()
+        except Indicator.DoesNotExist:
+            proxy = 'unknown'
+        return "Indicator type of indicator '%(indicator)s'" % {
+                'indicator': proxy}
         
         
-    @staticmethod
-    def value(instance, record):
+
+class ValueIndicator(IndicatorType):
+
+    class Meta:
+        app_label = 'generic_report'
+
+    def value(self, view, indicator, record):
         """
             Return directly the value of this indicator in this record.
         """
-        return getattr(record.eav, instance.concept.slug, None)
+        return getattr(record.eav, indicator.concept.slug, None)
+
+
 
 # todo: add checks on indicator parameters type (can't sum a district)
-
-
-
-class RatioIndicator(Indicator):     
+class RatioIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True   
-        app_label = 'generic_report'
-        
-        
+        app_label = 'generic_report'    
+
     # todo: add checks for ratio to accept 2 and only two args
-    @staticmethod
-    def value(instance, record):
+    def value(self, view, indicator, record):
         """
             Return a ratio between the values of the 2 indicators in this
             record.
         """
-        param_1, param_2 = instance.params.all().order_by('order')
+        param_1, param_2 = indicator.params.all().order_by('order')
         return round(operator.truediv(param_1.indicator.value(record), 
                                       param_2.indicator.value(record)), 2)
 
 
 
-class RateIndicator(Indicator): 
+class RateIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True 
         app_label = 'generic_report'
-        
-        
+
     # todo: add checks for rate to accept 2 and only two args
-    @staticmethod
-    def value(instance, record):
+    def value(self, view, indicator, record):
         """
             Return a rate between the values of the 2 indicators in this
             record.
         """
-        param_1, param_2 = instance.params.all().order_by('order')
+        param_1, param_2 = indicator.params.all().order_by('order')
         ratio = operator.truediv(param_1.indicator.value(record), 
                                  param_2.indicator.value(record)) * 100
         return round(ratio, 2)
 
 
 
-class AverageIndicator(Indicator): 
+class AverageIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True 
         app_label = 'generic_report'
         
-        
-    @staticmethod
-    def value(instance, record):
+    def value(self, view, indicator, record):
         """
             Return the average of the values for these indicators in this
             record.
         """
-        parameters = instance.params.all().order_by('order')
+        parameters = indicator.params.all().order_by('order')
         values = [param.indicator.value(record) for param in parameters]
         return round(operator.truediv(sum(values), len(values)), 2)  
 
 
 
-class SumIndicator(Indicator): 
+class SumIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True 
         app_label = 'generic_report'
-        
-        
-    @staticmethod
-    def value(instance, record):
+
+    def value(self, view, indicator, record):
         """
             Return the sum of the values for these indicators in this
             record.
         """
-        parameters = instance.params.all().order_by('order')
+        parameters = indicator.params.all().order_by('order')
         return sum(param.indicator.value(record) for param in parameters)
 
 
 
-class ProductIndicator(Indicator): 
+class ProductIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True 
         app_label = 'generic_report'
-        
-        
-    @staticmethod
-    def value(instance, record):
+
+    def value(self, view, indicator, record):
         """
             Return the product of the values for these indicators in this
             record.
         """
-        parameters = instance.params.all().order_by('order')
+        parameters = indicator.params.all().order_by('order')
         return reduce(operator.mul, 
                      (param.indicator.value(record) for param in parameters))
 
 
 
-class DifferenceIndicator(Indicator): 
+class DifferenceIndicator(IndicatorType): 
 
     class Meta:
-        proxy = True 
         app_label = 'generic_report'
-        
-        
-    @staticmethod
-    def value(instance, record):
+
+    def value(self, view, indicator, record):
         """
             Return the difference of the values for these indicators in this
             record.
         """
-        parameters = instance.params.all().order_by('order')
+        parameters = indicator.params.all().order_by('order')
         return reduce(operator.sub, 
                      (param.indicator.value(record) for param in parameters))
     
    
-   
-    
-# Mappting between indicator types and calculated indicator algo
-# we can't make that in the class definition as the following classes are not
-# defined yet but be can't put indicator here since they inherit from it
-Indicator.STRATEGY_CHOICES = (('value', ValueIndicator), 
-                                ('ratio',  RatioIndicator),
-                                ('average', AverageIndicator),
-                                ('sum', SumIndicator),
-                                ('product', ProductIndicator),
-                                ('difference', DifferenceIndicator),
-                                ('rate', RateIndicator))   

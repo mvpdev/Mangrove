@@ -27,6 +27,8 @@
         
         <div id="pagination" class="span-20" >
         
+        {% if view %}
+        
         {% if page.has_previous %}
          <p  class="previous" >
             <a href="?page={{ page.previous_page_number }}">
@@ -53,6 +55,11 @@
         {% trans "starts on" %} 
         {{ report.start_date|date:"SHORT_DATE_FORMAT" }}
         </p>
+        
+        {% else %}
+        <p>No view declared for this report. You must create a view
+           to describe how you want to display the report.</p>
+        {% endif %}
     
     </div>
     
@@ -93,8 +100,10 @@
     
     {% else %}
     
-    <p>No indicator declared for this view. You must choose the indicator
+    {% if view %}
+    <p>No indicator declared for this view. You must choose the indicators
     you wish to display from the report.</p>
+    {% endif %}
    
     {% endif %}
     
