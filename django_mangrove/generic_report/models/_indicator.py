@@ -2,18 +2,56 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4
 
+"""
+    List of classes used to define data types that composed a report.
+    Indicator is the base class that uses all other indicator classes to 
+    perform its job.
+    One exception is Selected indicator, which is just a bridge between 
+    indicators and report views.
+"""
 
-import datetime
-import re
+import eav.models
 import operator
-from _report import Report
 
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
 
-import eav.models
+
+# todo: refactor selected_indictor to use the through param
+class SelectedIndicator(models.Model):
+    """
+        Holder relationship between ReportView and Indicator.
+        Used to be able to specify an order in indicators for views.
+    """
+    
+    class Meta:
+        app_label = 'generic_report'
+        unique_together = (('view','indicator','order'),)
+
+    view = models.ForeignKey('generic_report.ReportView', related_name='selected_indicators')
+    indicator = models.ForeignKey('Indicator', related_name='selected_for')
+    order = models.IntegerField()
+    
+    def save(self, *args, **kwargs):
+        
+        # by default, create and order by incrementing the previous one,
+        # or by setting it to 1 if no previous indicator exists for this view
+        if not self.order:
+            try:
+                siblings = SelectedIndicator.objects.filter(view=self.view)
+                self.order = siblings.latest('order').order  + 1
+            except SelectedIndicator.DoesNotExist:
+                self.order = 1
+        
+        models.Model.save(self, *args, **kwargs)
+
+    def __unicode__(self):
+        return "Selected indicator %(order)s for '%(view)s': %(indicator)s" % {
+                'order': self.order, 'view': self.view, 
+                'indicator': self.indicator}
 
 
+# todo: make Parameter an intermediate models for m2m
 class Parameter(models.Model):
     """
         Link between a calculated indicator and it's parameter.
@@ -22,7 +60,7 @@ class Parameter(models.Model):
     
     class Meta:
         unique_together = (('param_of', 'indicator', 'order'))
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
     
     param_of = models.ForeignKey('Indicator', related_name='params') 
@@ -44,12 +82,13 @@ class Indicator(models.Model):
         value from each record, wether directly or by calculating it.
         
         The way to calculate the value depends of the indicator type.
-        
+        Each indicator type match a class wich contains the algo to extract
+        the values. All these classes are in the '_indicator.py' file.
     """
 
     class Meta:
         verbose_name = __('indicator')
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
 
 
     TYPE_CHOICES = (('value', __('Value')), 
@@ -67,10 +106,10 @@ class Indicator(models.Model):
     # todo: this field need a descritpion for south to freeze it
     concept = models.ForeignKey(eav.models.Attribute)   
 
-    report = models.ManyToManyField(Report, 
+    report = models.ManyToManyField('generic_report.Report', 
                                     verbose_name=__(u'report'),
                                     related_name='indicators', 
-                                    blank=True, null=True)
+                                    blank=True, null=True, symmetrical=False)
                                     
     type = models.CharField(max_length=64, verbose_name=__(u'type'),
                             choices=TYPE_CHOICES)
@@ -111,16 +150,66 @@ class Indicator(models.Model):
         return self.strategy.value(self, record)
     
     
+    @classmethod
+    def create_from_attribute(cls, attr, indicator_type='value', params=()):
+        """
+            Create an indicator from the given EAV attribute. The indicator
+            will be linked to this indicator and have the same name.
+            
+            By default, the indicator is a 'value' indicator. Pass type and
+            a list of indicators as params to choose a different indicator type.
+            Parameter order will be the same as the order of items in 'params'.
+        """
+        ind = Indicator.objects.create(type=indicator_type, concept=attr, 
+                                       name=attr.name)
+        for order, indicator in enumerate(params):
+            ind.add_param(indicator, order)
+        return ind   
+
+
+    @classmethod
+    def create_with_attribute(cls, name, attr_type=eav.models.Attribute.TYPE_INT, 
+                              indicator_type='value', params=()):
+        """
+            Create an indicator and the related EAV attribute. The indicator
+            will be linked to this indicator wich will have the same name.
+            
+            This first attempts to create the attribute (to let the creation
+            fail if it needs to) then it calls 'create_from_attribute' on it.
+        """
+        
+        attr, created = eav.models.Attribute.objects.get_or_create(name=name, 
+                                                          datatype=attr_type)
+        return cls.create_from_attribute(attr, indicator_type, params)
+    
+    
+    def add_param(self, indicator, order=None):
+        """
+            Add the given indicator as a parameter of the current one. If no
+            order is provided, the order will be calculated by taking the 
+            highest parameter order for all params of this indicators and 
+            adding 1.
+        """
+        # todo : move the param order check in param
+        if not order:
+            try:
+                order = self.params.latest('order').order  + 1
+            except Parameter.DoesNotExist:
+                order = 1
+        
+        Parameter.objects.create(param_of=self, indicator=indicator, 
+                                 order=order)
+    
+    
     def __unicode__(self):
         return self.name
-
 
 
 class ValueIndicator(Indicator):
 
     class Meta:
         proxy = True
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     @staticmethod
@@ -138,7 +227,7 @@ class RatioIndicator(Indicator):
 
     class Meta:
         proxy = True   
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     # todo: add checks for ratio to accept 2 and only two args
@@ -158,7 +247,7 @@ class RateIndicator(Indicator):
 
     class Meta:
         proxy = True 
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     # todo: add checks for rate to accept 2 and only two args
@@ -179,7 +268,7 @@ class AverageIndicator(Indicator):
 
     class Meta:
         proxy = True 
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     @staticmethod
@@ -198,7 +287,7 @@ class SumIndicator(Indicator):
 
     class Meta:
         proxy = True 
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     @staticmethod
@@ -216,7 +305,7 @@ class ProductIndicator(Indicator):
 
     class Meta:
         proxy = True 
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     @staticmethod
@@ -235,7 +324,7 @@ class DifferenceIndicator(Indicator):
 
     class Meta:
         proxy = True 
-        app_label = 'incontext_base'
+        app_label = 'generic_report'
         
         
     @staticmethod
@@ -248,7 +337,8 @@ class DifferenceIndicator(Indicator):
         return reduce(operator.sub, 
                      (param.indicator.value(record) for param in parameters))
     
-    
+   
+   
     
 # Mappting between indicator types and calculated indicator algo
 # we can't make that in the class definition as the following classes are not
@@ -259,4 +349,4 @@ Indicator.STRATEGY_CHOICES = (('value', ValueIndicator),
                                 ('sum', SumIndicator),
                                 ('product', ProductIndicator),
                                 ('difference', DifferenceIndicator),
-                                ('rate', RateIndicator))    
+                                ('rate', RateIndicator))   

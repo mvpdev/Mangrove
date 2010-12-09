@@ -7,3 +7,4 @@ from _filter import *
 from _orderer import *
 from _paginator import *
 from _report import *
+from _indicator import *
