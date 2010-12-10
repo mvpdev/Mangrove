@@ -40,7 +40,7 @@ class SelectedIndicator(models.Model):
         
         # by default, create and order by incrementing the previous one,
         # or by setting it to 1 if no previous indicator exists for this view
-        if not self.order:
+        if self.order is None:
             try:
                 siblings = SelectedIndicator.objects.filter(view=self.view)
                 self.order = siblings.latest('order').order  + 1
@@ -55,7 +55,7 @@ class SelectedIndicator(models.Model):
                 'indicator': self.indicator}
 
 
-# todo: make Parameter an intermediate models for m2m
+# todo: remove parameter
 class Parameter(models.Model):
     """
         Link between a calculated indicator and it's parameter.
@@ -192,7 +192,7 @@ class Indicator(models.Model):
             adding 1.
         """
         # todo : move the param order check in param
-        if not order:
+        if order is None :
             try:
                 order = self.params.latest('order').order  + 1
             except Parameter.DoesNotExist:
@@ -242,7 +242,12 @@ class ValueIndicator(IndicatorType):
 class RatioIndicator(IndicatorType): 
 
     class Meta:
-        app_label = 'generic_report'    
+        app_label = 'generic_report'
+        
+    numerator = models.ForeignKey(Indicator, 
+                                  related_name='numerator_of_ratio')
+    denominator = models.ForeignKey(Indicator, 
+                                    related_name='denominator_of_ratio')
 
     # todo: add checks for ratio to accept 2 and only two args
     def value(self, view, indicator, record):
@@ -250,16 +255,19 @@ class RatioIndicator(IndicatorType):
             Return a ratio between the values of the 2 indicators in this
             record.
         """
-        param_1, param_2 = indicator.params.all().order_by('order')
-        return round(operator.truediv(param_1.indicator.value(record), 
-                                      param_2.indicator.value(record)), 2)
+        val = operator.truediv(self.numerator.value(view, record), 
+                               self.denominator.value(view, record))
+        return round(val, 2)
 
 
-
+# todo: add rate formating in the view
 class RateIndicator(IndicatorType): 
 
     class Meta:
         app_label = 'generic_report'
+
+    numerator = models.ForeignKey(Indicator, related_name='numerator_of_rate')
+    denominator = models.ForeignKey(Indicator, related_name='denominator_of_rate')
 
     # todo: add checks for rate to accept 2 and only two args
     def value(self, view, indicator, record):
@@ -267,10 +275,9 @@ class RateIndicator(IndicatorType):
             Return a rate between the values of the 2 indicators in this
             record.
         """
-        param_1, param_2 = indicator.params.all().order_by('order')
-        ratio = operator.truediv(param_1.indicator.value(record), 
-                                 param_2.indicator.value(record)) * 100
-        return round(ratio, 2)
+        val = operator.truediv(self.numerator.value(view, record), 
+                               self.denominator.value(view, record))
+        return round(ratio * 100, 2)
 
 
 
@@ -285,7 +292,7 @@ class AverageIndicator(IndicatorType):
             record.
         """
         parameters = indicator.params.all().order_by('order')
-        values = [param.indicator.value(record) for param in parameters]
+        values = [param.indicator.value(view, record) for param in parameters]
         return round(operator.truediv(sum(values), len(values)), 2)  
 
 
@@ -301,7 +308,7 @@ class SumIndicator(IndicatorType):
             record.
         """
         parameters = indicator.params.all().order_by('order')
-        return sum(param.indicator.value(record) for param in parameters)
+        return sum(param.indicator.value(view, record) for param in parameters)
 
 
 
@@ -317,7 +324,7 @@ class ProductIndicator(IndicatorType):
         """
         parameters = indicator.params.all().order_by('order')
         return reduce(operator.mul, 
-                     (param.indicator.value(record) for param in parameters))
+                     (param.indicator.value(view, record) for param in parameters))
 
 
 
@@ -325,14 +332,30 @@ class DifferenceIndicator(IndicatorType):
 
     class Meta:
         app_label = 'generic_report'
+        
+    first_term = models.ForeignKey(Indicator, related_name='first_term_of')
+    term_to_substract = models.ForeignKey(Indicator, 
+                                          related_name='term_to_substract_of')
 
     def value(self, view, indicator, record):
         """
             Return the difference of the values for these indicators in this
             record.
         """
-        parameters = indicator.params.all().order_by('order')
-        return reduce(operator.sub, 
-                     (param.indicator.value(record) for param in parameters))
-    
-   
+        return self.first_term.value(view, record) -\
+               self.term_to_substract.value(view, record)
+        
+
+class DateIndicator(IndicatorType): 
+
+    class Meta:
+        app_label = 'generic_report'
+        
+
+    def value(self, view, indicator, record):
+        """
+            Return the difference of the values for these indicators in this
+            record.
+        """
+        date = getattr(record.eav, indicator.concept.slug, None)
+        return date.strftime(view.time_format)

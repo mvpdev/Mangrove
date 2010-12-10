@@ -19,5 +19,6 @@ admin.site.register(RateIndicator)
 admin.site.register(AverageIndicator)
 admin.site.register(ProductIndicator)
 admin.site.register(DifferenceIndicator)
+admin.site.register(DateIndicator)
 
 eav.register(Record)
