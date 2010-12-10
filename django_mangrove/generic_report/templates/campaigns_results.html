@@ -25,7 +25,7 @@
             {% trans "Report" %}: {{ report.name }}
         </h2>
         
-        <div id="pagination" class="span-20" >
+        <div id="pagination" class="span-24 last" >
         
         {% if view %}
         
@@ -51,10 +51,6 @@
         
          </div>
         
-        <p id="campaign-date" class="span-4 last" >
-        {% trans "starts on" %} 
-        {{ report.start_date|date:"SHORT_DATE_FORMAT" }}
-        </p>
         
         {% else %}
         <p>No view declared for this report. You must create a view

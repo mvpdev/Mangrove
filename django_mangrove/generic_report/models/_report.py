@@ -67,8 +67,8 @@ class ReportView(models.Model):
                             verbose_name=__(u'name'),
                             default=__('default'))
     time_format = models.CharField(max_length=32, 
-                               verbose_name=__(u'time format'),
-                               default='%m/%d/%y')  
+                                   verbose_name=__(u'time format'),
+                                   default='%m/%d/%y')  
 
     def get_labels(self):
         sis = self.selected_indicators.all().order_by('order')
@@ -83,11 +83,23 @@ class ReportView(models.Model):
         sis = self.selected_indicators.all().order_by('order')
         indicators = [si.indicator for si in sis]
         
-        for record in records:
-            d = SortedDict()
+        # first, extract data from record as a dict
+        matrice = [record.to_sorted_dict(indicators) for record in records]
+         
+        # todo: optimize extraction / calculation by separating indicator
+        # for both process and avoiding extracting value indicators twice
+        # secondly,calculate the data 
+        
+        for record in matrice:
             for indic in indicators:
-                d[indic.name] = indic.value(self, record)
-            matrice.append(d)
+                record[indic.concept.slug] = indic.value(self, record) 
+
+        # thirdly aggregate / filter the data
+       
+        # enventually, format the data 
+        for record in matrice:
+            for indic in indicators:
+                record[indic.concept.slug] = indic.format(self, record)
             
         return matrice
             
@@ -131,7 +143,7 @@ class ReportView(models.Model):
         return _('View "%(view)s" of report "%(report)s"') % {
                  'view': self.name, 'report': self.report}
 
-
+# todo: remove date and set that as an indicator automatically created
 class Record(models.Model):
     """
         A batch of raw data. A record hold data using the django-eav app. 
@@ -155,5 +167,14 @@ class Record(models.Model):
         return _("Record %(record)s (sent on %(date)s) of report %(report)s") % {
                  'record': self.pk, 'report': self.report, 'date': self.date}
 
+    def to_sorted_dict(self, indicators):
+        data = SortedDict()
+        for indicator in indicators:
+            try:
+                attr = indicator.concept.slug
+                data[attr] = getattr(self.eav, attr)
+            except AttributeError:
+                pass
+        return data
 
 

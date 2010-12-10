@@ -19,7 +19,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 
 
-
 # todo: refactor selected_indictor to use the through param
 class SelectedIndicator(models.Model):
     """
@@ -133,7 +132,7 @@ class Indicator(models.Model):
         models.Model.__save__(self, *args, **kwargs)
         
         
-    def value(self, view, record):
+    def value(self, view, data):
         """
             Return the value of this indicator for this record, using the
             proper behavior according to the indicator type.
@@ -142,7 +141,19 @@ class Indicator(models.Model):
         if not self.strategy:
             raise ValueError('Can not get value with an unsaved indicator')
         
-        return self.strategy.value(view, self, record)
+        return self.strategy.value(view, self, data)
+
+
+    def format(self, view, data):
+        """
+            Return the formated value of this indicator for this record, using 
+            the proper behavior according to the indicator type.
+        """
+        
+        if not self.strategy:
+            raise ValueError('Can not get value with an unsaved indicator')
+        
+        return self.strategy.format(view, self, data)    
     
     
     @classmethod
@@ -215,6 +226,17 @@ class IndicatorType(models.Model):
     proxy = generic.GenericRelation(Indicator, object_id_field="strategy_id",
                                     content_type_field="strategy_type")
     
+    def format(self, view, indicator, data):
+        return unicode(data[indicator.concept.slug])
+
+
+    def value(self, view, indicator, data):
+        """
+            Return directly the value of this indicator in this record.
+        """
+        return data[indicator.concept.slug]
+    
+    
     def __unicode__(self):
         try:
             proxy = self.proxy.latest()
@@ -222,19 +244,13 @@ class IndicatorType(models.Model):
             proxy = 'unknown'
         return "Indicator type of indicator '%(indicator)s'" % {
                 'indicator': proxy}
-        
+
         
 
 class ValueIndicator(IndicatorType):
 
     class Meta:
         app_label = 'generic_report'
-
-    def value(self, view, indicator, record):
-        """
-            Return directly the value of this indicator in this record.
-        """
-        return getattr(record.eav, indicator.concept.slug, None)
 
 
 
@@ -250,13 +266,13 @@ class RatioIndicator(IndicatorType):
                                     related_name='denominator_of_ratio')
 
     # todo: add checks for ratio to accept 2 and only two args
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return a ratio between the values of the 2 indicators in this
             record.
         """
-        val = operator.truediv(self.numerator.value(view, record), 
-                               self.denominator.value(view, record))
+        val = operator.truediv(self.numerator.value(view, data), 
+                               self.denominator.value(view, data))
         return round(val, 2)
 
 
@@ -270,13 +286,13 @@ class RateIndicator(IndicatorType):
     denominator = models.ForeignKey(Indicator, related_name='denominator_of_rate')
 
     # todo: add checks for rate to accept 2 and only two args
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return a rate between the values of the 2 indicators in this
             record.
         """
-        val = operator.truediv(self.numerator.value(view, record), 
-                               self.denominator.value(view, record))
+        val = operator.truediv(self.numerator.value(view, data), 
+                               self.denominator.value(view, data))
         return round(ratio * 100, 2)
 
 
@@ -286,13 +302,13 @@ class AverageIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
         
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return the average of the values for these indicators in this
             record.
         """
         parameters = indicator.params.all().order_by('order')
-        values = [param.indicator.value(view, record) for param in parameters]
+        values = [param.indicator.value(view, data) for param in parameters]
         return round(operator.truediv(sum(values), len(values)), 2)  
 
 
@@ -302,13 +318,13 @@ class SumIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
 
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return the sum of the values for these indicators in this
             record.
         """
         parameters = indicator.params.all().order_by('order')
-        return sum(param.indicator.value(view, record) for param in parameters)
+        return sum(param.indicator.value(view, data) for param in parameters)
 
 
 
@@ -317,14 +333,14 @@ class ProductIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
 
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return the product of the values for these indicators in this
             record.
         """
         parameters = indicator.params.all().order_by('order')
         return reduce(operator.mul, 
-                     (param.indicator.value(view, record) for param in parameters))
+                     (param.indicator.value(view, data) for param in parameters))
 
 
 
@@ -337,13 +353,13 @@ class DifferenceIndicator(IndicatorType):
     term_to_substract = models.ForeignKey(Indicator, 
                                           related_name='term_to_substract_of')
 
-    def value(self, view, indicator, record):
+    def value(self, view, indicator, data):
         """
             Return the difference of the values for these indicators in this
             record.
         """
-        return self.first_term.value(view, record) -\
-               self.term_to_substract.value(view, record)
+        return self.first_term.value(view, data) -\
+               self.term_to_substract.value(view, data)
         
 
 class DateIndicator(IndicatorType): 
@@ -351,11 +367,5 @@ class DateIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
         
-
-    def value(self, view, indicator, record):
-        """
-            Return the difference of the values for these indicators in this
-            record.
-        """
-        date = getattr(record.eav, indicator.concept.slug, None)
-        return date.strftime(view.time_format)
+    def format(self, view, indicator, data):
+        return self.value(view, indicator, data).strftime(view.time_format)
