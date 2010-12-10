@@ -8,10 +8,13 @@ import eav
 
 admin.site.register(Report)
 admin.site.register(Record)  
-admin.site.register(Indicator)
+
 admin.site.register(Parameter)
 admin.site.register(ReportView)
+
 admin.site.register(SelectedIndicator)
+
+admin.site.register(Indicator)
 admin.site.register(ValueIndicator)
 admin.site.register(SumIndicator)
 admin.site.register(RatioIndicator)
@@ -20,5 +23,8 @@ admin.site.register(AverageIndicator)
 admin.site.register(ProductIndicator)
 admin.site.register(DifferenceIndicator)
 admin.site.register(DateIndicator)
+
+admin.site.register(Aggregator)
+admin.site.register(DateAggregator)
 
 eav.register(Record)

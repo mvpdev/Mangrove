@@ -3,6 +3,7 @@
 # vim: ai ts=4 sts=4 et sw=4
 
 import datetime
+import eav
 
 from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
@@ -70,9 +71,26 @@ class ReportView(models.Model):
                                    verbose_name=__(u'time format'),
                                    default='%m/%d/%y')  
 
-    def get_labels(self):
+
+    def get_selected_indicators(self):
         sis = self.selected_indicators.all().order_by('order')
-        return [si.indicator.name for si in sis]
+        indicators = [si.indicator for si in sis]
+        
+        # if there is an aggregation, remove non numeric indicators
+        if self.aggregators.all().exists():
+            aggregator = self.aggregators.all()[0]
+            t_int = eav.models.Attribute.TYPE_INT
+            filtered_indicators = []
+            for indicator in indicators:
+                if indicator.concept.datatype == t_int \
+                   or indicator.concept == aggregator.indicator.concept:
+                   filtered_indicators.append(indicator)
+            return filtered_indicators
+        return indicators
+
+
+    def get_labels(self):
+        return [si.name for si in self.get_selected_indicators()]
       
 
     # cache that
@@ -81,7 +99,7 @@ class ReportView(models.Model):
         matrice = []
         records = self.report.records.all()
         sis = self.selected_indicators.all().order_by('order')
-        indicators = [si.indicator for si in sis]
+        indicators = self.get_selected_indicators()
         
         # first, extract data from record as a dict
         matrice = [record.to_sorted_dict(indicators) for record in records]
@@ -95,6 +113,8 @@ class ReportView(models.Model):
                 record[indic.concept.slug] = indic.value(self, record) 
 
         # thirdly aggregate / filter the data
+        for aggregator in self.aggregators.all():
+            matrice = aggregator.get_aggregated_data(matrice)
        
         # enventually, format the data 
         for record in matrice:

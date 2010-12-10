@@ -86,7 +86,7 @@ class Indicator(models.Model):
         
         The way to calculate the value depends of the indicator type.
         Each indicator type match a class wich contains the algo to extract
-        the values. All these classes are in the '_indicator.py' file.
+        the values. 
     """
 
     class Meta:
@@ -106,10 +106,10 @@ class Indicator(models.Model):
                                     related_name='indicators', 
                                     blank=True, null=True, symmetrical=False)
 
-    # generic relation to an subclass of indicator that will be used
+    # generic relation to a specialized indicator that will be used
     # to implement the strategy pattern 
     # we can't use the sub classes directly because they would be no way to
-    # get all the indicator from the reports and views   
+    # get all the indicators from the reports and views   
     strategy_type = models.ForeignKey(ContentType, null=True, blank=True)
     strategy_id = models.PositiveIntegerField(null=True, blank=True)
     strategy = generic.GenericForeignKey(ct_field="strategy_type", 
@@ -219,6 +219,10 @@ class Indicator(models.Model):
 
 
 class IndicatorType(models.Model):
+    """
+        Common parent to all the specialized indicators that factor some
+        behavior.
+    """
 
     class Meta:
         app_label = 'generic_report'
@@ -367,5 +371,12 @@ class DateIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
         
+    # todo: make format more efficient        
     def format(self, view, indicator, data):
-        return self.value(view, indicator, data).strftime(view.time_format)
+        date = self.value(view, indicator, data)
+        print date
+        if view.aggregators.all().exists():
+            aggregator = view.aggregators.all()[0]
+            if aggregator.indicator == indicator:
+                return aggregator.format(date)
+        return date.strftime(view.time_format)
