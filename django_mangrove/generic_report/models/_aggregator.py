@@ -77,6 +77,17 @@ class Aggregator(models.Model):
         return self.strategy.format(value)
 
 
+    def filter(self, value):
+        """
+            Return if the value can be kept or not for display. Some value
+            are not valid for the current aggregation (e.g: a country when
+            you are aggregating by state).
+            
+            Returns True if you can keep it, or False if you need to skip it.
+        """
+        return self.strategy.filter(value)
+
+
     def __save__(self, *args, **kwargs):
         # you should not be able to change the type or the aggregator
         # after creating the aggregator
@@ -122,6 +133,11 @@ class AggregatorType(models.Model):
         # aggregate the matrice
         for data in matrice:
             ref_value = indicator.value(view, data)
+            
+            # filter the data, excluding impossible to aggregate data
+            if not self.filter(ref_value):
+                continue
+            
             aggreated_ref_value = self.get_aggregated_value(ref_value)
             
             new_data = new_matrice.setdefault(aggreated_ref_value, SortedDict())
@@ -144,6 +160,17 @@ class AggregatorType(models.Model):
         """
         return unicode(value)    
     
+
+    def filter(self, value):
+        """
+            Return if the value can be kept or not for display. Some value
+            are not valid for the current aggregation (e.g: a country when
+            you are aggregating by state). 
+            
+            This one always returns True.
+        """
+        return True
+
     
     def __unicode__(self):
         try:
@@ -300,4 +327,11 @@ class LocationAggregator(AggregatorType):
             
             if not location:
                 return None
-        
+     
+     
+    def filter(self, location):
+        """
+            Return False if the area does not match the area type, nor does
+            any of its parent
+        """
+        return bool(self.get_closest_matching_location_with_type(location))   
