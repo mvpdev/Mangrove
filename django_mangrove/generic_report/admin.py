@@ -26,5 +26,6 @@ admin.site.register(DateIndicator)
 
 admin.site.register(Aggregator)
 admin.site.register(DateAggregator)
+admin.site.register(LocationAggregator)
 
 eav.register(Record)

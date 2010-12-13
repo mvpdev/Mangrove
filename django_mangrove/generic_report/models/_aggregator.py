@@ -16,6 +16,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from django.utils.datastructures import SortedDict
 
+from simple_locations.models import AreaType
+
 
 class Aggregator(models.Model):
     """
@@ -136,6 +138,10 @@ class AggregatorType(models.Model):
 
 
     def format(self, value):
+        """
+            Format the value after it has been agregated (it can change since
+            the data may not be the same type. e.g.: date -> month)
+        """
         return unicode(value)    
     
     
@@ -166,6 +172,8 @@ class DateAggregator(AggregatorType):
                                    choices=TIME_PERIOD_CHOISES,
                                    verbose_name=__(u'time period'))
 
+    # todo: add number_of_period
+
     def __init__(self, *args, **kwargs):
         AggregatorType.__init__(self, *args, **kwargs)
         
@@ -174,6 +182,7 @@ class DateAggregator(AggregatorType):
         
         formating_strategies = dict(DateAggregator.FORMATING_STRATEGIES)
         self.formating_strategy = formating_strategies[self.time_period]
+
 
     def get_aggregated_value(self, date):
         """
@@ -236,11 +245,59 @@ class DateAggregator(AggregatorType):
 
     
 DateAggregator.AGGREGATION_STRATEGIES = (('day', DateAggregator.aggregate_by_day),
-                                             ('week', DateAggregator.aggregate_by_week),
-                                             ('month', DateAggregator.aggregate_by_month),
-                                             ('year', DateAggregator.aggregate_by_year),)  
+                                         ('week', DateAggregator.aggregate_by_week),
+                                         ('month', DateAggregator.aggregate_by_month),
+                                         ('year', DateAggregator.aggregate_by_year),)  
                                              
 DateAggregator.FORMATING_STRATEGIES = (('day', DateAggregator.format_day),
                                      ('week', DateAggregator.format_week),
                                      ('month', DateAggregator.format_month),
                                      ('year', DateAggregator.format_year),) 
+                                     
+                                    
+                                     
+class LocationAggregator(AggregatorType): 
+    """
+        Aggregate by place type. Everything that is this type or IN a place
+        with this type will be grouped.
+    """
+
+    class Meta:
+        app_label = 'generic_report'
+        
+
+    area_type = models.ForeignKey(AreaType, 
+                                  verbose_name=__(u'Area Type'),
+                                  related_name='agregated_by')
+
+
+    # todo: make a filter method : e.g. if you aggregate by district, remove countries
+
+
+    def get_aggregated_value(self, location):
+        """
+            Return the location object which is the common parent
+        """
+        
+        return self.get_closest_matching_location_with_type(location)
+        
+        
+    def get_closest_matching_location_with_type(self, location):
+        """
+            Return the location object which is the common parent or None
+            if it doesn't exist.
+        """
+        
+        # todo: ensure in simple location that you can't make an infinite 
+        # reference loop
+        
+        while 1:
+        
+            if location.kind == self.area_type:
+                return location
+                
+            location = location.parent
+            
+            if not location:
+                return None
+        
