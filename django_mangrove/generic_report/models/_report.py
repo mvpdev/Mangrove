@@ -79,10 +79,11 @@ class ReportView(models.Model):
         # if there is an aggregation, remove non numeric indicators
         if self.aggregators.all().exists():
             aggregator = self.aggregators.all()[0]
-            t_int = eav.models.Attribute.TYPE_INT
+            types = (eav.models.Attribute.TYPE_INT, 
+                     eav.models.Attribute.TYPE_FLOAT) 
             filtered_indicators = []
             for indicator in indicators:
-                if indicator.concept.datatype == t_int \
+                if indicator.concept.datatype in types \
                    or indicator.concept == aggregator.indicator.concept:
                    filtered_indicators.append(indicator)
             return filtered_indicators
@@ -108,6 +109,7 @@ class ReportView(models.Model):
         # for both process and avoiding extracting value indicators twice
         # secondly,calculate the data 
         
+        # Todo: cache this basic extraction, use it as a base for the other views
         for record in matrice:
             for indic in indicators:
                 record[indic.concept.slug] = indic.value(self, record) 
@@ -115,11 +117,19 @@ class ReportView(models.Model):
         # thirdly aggregate / filter the data
         for aggregator in self.aggregators.all():
             matrice = aggregator.get_aggregated_data(matrice)
+
+        # calculate the calculated indicators again so stuff like average get
+        # it right
+        for record in matrice:
+            for indic in indicators:
+                record[indic.concept.slug] = indic.value(self, record)  
        
         # enventually, format the data 
         for record in matrice:
             for indic in indicators:
                 record[indic.concept.slug] = indic.format(self, record)
+        
+ 
             
         return matrice
             
