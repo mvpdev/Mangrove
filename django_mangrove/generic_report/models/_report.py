@@ -74,6 +74,11 @@ class ReportView(models.Model):
 
 
     def get_selected_indicators(self):
+        """
+            Return the indicators that must be displayed for this view:
+            - get indicators from the selected indicator proxys
+            - remove indicators that can not be displayed for this specific view
+        """
         sis = self.selected_indicators.all().order_by('order')
         indicators = [si.indicator for si in sis]
         
@@ -198,6 +203,7 @@ class Record(models.Model):
                  'record': self.pk, 'report': self.report, 'date': self.date}
 
     def to_sorted_dict(self, indicators):
+    
         data = SortedDict()
         for indicator in indicators:
             try:

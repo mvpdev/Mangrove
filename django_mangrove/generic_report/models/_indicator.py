@@ -141,6 +141,10 @@ class Indicator(models.Model):
         if not self.strategy:
             raise ValueError('Can not get value with an unsaved indicator')
         
+        # if it's a record object, turn it into a sorted dict
+        if hasattr(data, 'to_sorted_dict'):
+            data = data.to_sorted_dict(view.get_selected_indicators())
+
         return self.strategy.value(view, self, data)
 
 
@@ -239,7 +243,7 @@ class IndicatorType(models.Model):
 
     def value(self, view, indicator, data):
         """
-            Return directly the value of this indicator in this record.
+            Return directly the value of this indicator in this data dict.
         """
         return data[indicator.concept.slug]
     
@@ -319,7 +323,7 @@ class RateIndicator(IndicatorType):
         """
         val = operator.truediv(self.numerator.value(view, data), 
                                self.denominator.value(view, data))
-        return round(ratio * 100, 2)
+        return round(val * 100, 2)
 
 
 

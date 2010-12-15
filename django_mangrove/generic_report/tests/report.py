@@ -15,13 +15,13 @@ class ReportTests(TestCase):
 
 
     def setUp(self):
-        self.report = Report.objects.get_or_create(name='Square')[0]
-        self.height = Attribute.objects.get_or_create(name='Height', 
-                                               datatype=Attribute.TYPE_INT)[0]
+        self.report = Report.objects.create(name='Square')
+        self.height = Attribute.objects.create(name='Height', 
+                                               datatype=Attribute.TYPE_INT)
         self.height_indicator = Indicator.create_from_attribute(self.height)
 
-        self.width = Attribute.objects.get_or_create(name='Width', 
-                                               datatype=Attribute.TYPE_INT)[0]
+        self.width = Attribute.objects.create(name='Width', 
+                                               datatype=Attribute.TYPE_INT)
         self.width_indicator = Indicator.create_from_attribute(self.width)
 
         self.report.indicators.add(self.height_indicator)
@@ -30,7 +30,7 @@ class ReportTests(TestCase):
         self.view = ReportView.create_from_report(report=self.report, 
                                                   name='main')
         
-        self.record = Record.objects.get_or_create(report=self.report)
+        self.record = Record.objects.create(report=self.report)
         self.record.eav.height = 10
         self.record.eav.width = 2
         self.record.save()
