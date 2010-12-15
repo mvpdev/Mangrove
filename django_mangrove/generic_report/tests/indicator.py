@@ -44,6 +44,10 @@ class IndicatorTests(TestCase):
     
        value = self.a.value(self.view, self.record)
        self.assertEqual(value, 10)
+       
+       #data = self.record.to_sorted_dict(self.view.get_selected_indicators())
+       #formated_value = self.a.format(self.view, data)
+       #self.assertEqual(formated_value , '10')
    
    
     def test_sum_indicator(self):
@@ -56,6 +60,11 @@ class IndicatorTests(TestCase):
     
         value = i.value(self.view, self.record)
         self.assertEqual(value, 15)  
+        
+        #data = self.record.to_sorted_dict(self.view.get_selected_indicators())
+        #formated_value = i.format(self.view, data)
+        
+        #self.assertEqual(formated_value , '15')
        
  
     def test_product_indicator(self):

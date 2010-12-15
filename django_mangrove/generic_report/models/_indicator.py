@@ -141,11 +141,7 @@ class Indicator(models.Model):
         if not self.strategy:
             raise ValueError('Can not get value with an unsaved indicator')
         
-        # if it's a record object, turn it into a sorted dict
-        if hasattr(data, 'to_sorted_dict'):
-            data = data.to_sorted_dict(view.get_selected_indicators())
-
-        return self.strategy.value(view, self, data)
+        return self.strategy.value(view, data)
 
 
     def format(self, view, data):
@@ -155,9 +151,9 @@ class Indicator(models.Model):
         """
         
         if not self.strategy:
-            raise ValueError('Can not get value with an unsaved indicator')
+            raise ValueError('Can not format with an unsaved indicator')
         
-        return self.strategy.format(view, self, data)    
+        return self.strategy.format(view, data)    
     
     
     @classmethod
@@ -237,15 +233,23 @@ class IndicatorType(models.Model):
     proxy = generic.GenericRelation(Indicator, object_id_field="strategy_id",
                                     content_type_field="strategy_type")
     
-    def format(self, view, indicator, data):
-        return unicode(data[indicator.concept.slug])
+    def format(self, view, data):
+        # don't call value() here as you don't want calculation
+        # calculation run between strings
+    
+        return unicode(data[self.proxy.all()[0].concept.slug])
 
 
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return directly the value of this indicator in this data dict.
         """
-        return data[indicator.concept.slug]
+        
+        # if it's a record object, turn it into a sorted dict
+        if hasattr(data, 'to_sorted_dict'):
+            data = data.to_sorted_dict(view.get_selected_indicators())
+        
+        return data[self.proxy.all()[0].concept.slug]
     
     
     def add_param(self, indicator, order=None):
@@ -296,7 +300,7 @@ class RatioIndicator(IndicatorType):
                                     related_name='denominator_of_ratio')
 
     # todo: add checks for ratio to accept 2 and only two args
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return a ratio between the values of the 2 indicators in this
             record.
@@ -316,7 +320,7 @@ class RateIndicator(IndicatorType):
     denominator = models.ForeignKey(Indicator, related_name='denominator_of_rate')
 
     # todo: add checks for rate to accept 2 and only two args
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return a rate between the values of the 2 indicators in this
             record.
@@ -332,12 +336,12 @@ class AverageIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
         
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return the average of the values for these indicators in this
             record.
         """
-        parameters = indicator.params.all().order_by('order')
+        parameters = self.proxy.all()[0].params.all().order_by('order')
         values = [param.indicator.value(view, data) for param in parameters]
         return round(operator.truediv(sum(values), len(values)), 2)  
 
@@ -348,12 +352,12 @@ class SumIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
 
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return the sum of the values for these indicators in this
             record.
         """
-        parameters = indicator.params.all().order_by('order')
+        parameters = self.proxy.all()[0].params.all().order_by('order')
         return sum(param.indicator.value(view, data) for param in parameters)
 
 
@@ -363,12 +367,12 @@ class ProductIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
 
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return the product of the values for these indicators in this
             record.
         """
-        parameters = indicator.params.all().order_by('order')
+        parameters = self.proxy.all()[0].params.all().order_by('order')
         return reduce(operator.mul, 
                      (param.indicator.value(view, data) for param in parameters))
 
@@ -383,7 +387,7 @@ class DifferenceIndicator(IndicatorType):
     term_to_substract = models.ForeignKey(Indicator, 
                                           related_name='term_to_substract_of')
 
-    def value(self, view, indicator, data):
+    def value(self, view, data):
         """
             Return the difference of the values for these indicators in this
             record.
@@ -398,9 +402,9 @@ class DateIndicator(IndicatorType):
         app_label = 'generic_report'
         
     # todo: make format more efficient        
-    def format(self, view, indicator, data):
-        date = self.value(view, indicator, data)
-        print date
+    def format(self, view, data):
+        indicator = self.proxy.all()[0]
+        date = self.value(view, data)
         if view.aggregators.all().exists():
             aggregator = view.aggregators.all()[0]
             if aggregator.indicator == indicator:
