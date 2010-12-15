@@ -171,11 +171,19 @@ class Indicator(models.Model):
         kwargs = kwargs or {}
          
         real_indicator = indicator_type.objects.create(**kwargs)
-        for arg in enumerate(params):
-            real_indicator.ind.add_param(indicator, order)
         
+        # you must create the indicator proxy before adding a parameter
+        # or it will fail
         ind = Indicator.objects.create(strategy=real_indicator, concept=attr, 
-                                       name=attr.name)
+                               name=attr.name)
+
+        # adding parameters. eventually they are added to the indicator proxy
+        # anyway
+        # todo: probably want to clean up the add_param that bounce from
+        # one reference to another for no usefull reason
+        for order, indicator in enumerate(args):
+            real_indicator.add_param(indicator, order)
+
         return ind
         
 
@@ -192,7 +200,7 @@ class Indicator(models.Model):
         
         attr, created = eav.models.Attribute.objects.get_or_create(name=name, 
                                                           datatype=attr_type)
-        return cls.create_from_attribute(attr, indicator_type, params)
+        return cls.create_from_attribute(attr, indicator_type, args, kwargs)
     
     
     def add_param(self, indicator, order=None):
@@ -201,18 +209,12 @@ class Indicator(models.Model):
             order is provided, the order will be calculated by taking the 
             highest parameter order for all params of this indicators and 
             adding 1.
+            
+            This method is delegated to the strategy.
         """
-        # todo : move the param order check in param
-        if order is None :
-            try:
-                order = self.params.latest('order').order  + 1
-            except Parameter.DoesNotExist:
-                order = 1
-        
-        Parameter.objects.create(param_of=self, indicator=indicator, 
-                                 order=order)
-    
-    
+        return self.strategy.add_param(indicator, order)
+  
+     
     def __unicode__(self):
         return self.name
 
@@ -227,6 +229,7 @@ class IndicatorType(models.Model):
     class Meta:
         app_label = 'generic_report'
     
+    # todo: make proxy => _proxy and real 'proxy' an accessor
     proxy = generic.GenericRelation(Indicator, object_id_field="strategy_id",
                                     content_type_field="strategy_type")
     
@@ -240,6 +243,25 @@ class IndicatorType(models.Model):
         """
         return data[indicator.concept.slug]
     
+    
+    def add_param(self, indicator, order=None):
+        """
+            Add the given indicator as a parameter of the current one. If no
+            order is provided, the order will be calculated by taking the 
+            highest parameter order for all params of this indicators and 
+            adding 1.
+        """
+        # todo : move the param order check in param
+        if order is None :
+            try:
+                order = self.proxy.all()[0].params.latest('order').order  + 1
+            except Parameter.DoesNotExist:
+                order = 1
+        
+        return Parameter.objects.create(param_of=self.proxy.all()[0], 
+                                        indicator=indicator, 
+                                        order=order)
+
     
     def __unicode__(self):
         try:

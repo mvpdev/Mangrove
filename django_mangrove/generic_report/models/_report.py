@@ -10,7 +10,8 @@ from django.db import models
 from django.utils.datastructures import SortedDict
 from django.db.models.signals import m2m_changed
 
-from code_generator.fields import CodeField
+from _indicator import SelectedIndicator
+
 
 """
     Reports (a group of data), report views (the way to display the data) and
@@ -129,8 +130,6 @@ class ReportView(models.Model):
             for indic in indicators:
                 record[indic.concept.slug] = indic.format(self, record)
         
- 
-            
         return matrice
             
         
@@ -172,6 +171,7 @@ class ReportView(models.Model):
     def __unicode__(self):
         return _('View "%(view)s" of report "%(report)s"') % {
                  'view': self.name, 'report': self.report}
+
 
 # todo: remove date and set that as an indicator automatically created
 class Record(models.Model):
