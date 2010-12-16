@@ -40,7 +40,7 @@ def report_results(request, id):
         view = page.object_list[0]
 
         header = view.get_labels()
-        body = view.get_data_matrice()
+        body = view.get_data_grid()
         
     ctx = locals()
 
