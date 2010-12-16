@@ -45,9 +45,9 @@ class IndicatorTests(TestCase):
        value = self.a.value(self.view, self.record)
        self.assertEqual(value, 10)
        
-       #data = self.record.to_sorted_dict(self.view.get_selected_indicators())
-       #formated_value = self.a.format(self.view, data)
-       #self.assertEqual(formated_value , '10')
+       data = self.record.to_sorted_dict(self.view.get_selected_indicators())
+       formated_value = self.a.format(self.view, data)
+       self.assertEqual(formated_value , '10')
    
    
     def test_sum_indicator(self):
@@ -61,10 +61,12 @@ class IndicatorTests(TestCase):
         value = i.value(self.view, self.record)
         self.assertEqual(value, 15)  
         
-        #data = self.record.to_sorted_dict(self.view.get_selected_indicators())
-        #formated_value = i.format(self.view, data)
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
         
-        #self.assertEqual(formated_value , '15')
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '15')
        
  
     def test_product_indicator(self):
@@ -77,6 +79,14 @@ class IndicatorTests(TestCase):
 
         value = i.value(self.view, self.record)
         self.assertEqual(value, 60)  
+        
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '60')
+        
         
         
     def test_ratio_indicator(self):
@@ -93,6 +103,13 @@ class IndicatorTests(TestCase):
         value = i.value(self.view, self.record)
         self.assertEqual(value, 5)     
         
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '5.0')
+        
         
     def test_rate_indicator(self):
     
@@ -107,6 +124,14 @@ class IndicatorTests(TestCase):
 
         value = i.value(self.view, self.record)
         self.assertEqual(value, 20.0)
+   
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '20.0 %')
+   
         
         
     def test_average_indicator(self):
@@ -119,6 +144,14 @@ class IndicatorTests(TestCase):
 
         value = i.value(self.view, self.record)
         self.assertEqual(value, 5)      
+
+
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '5.0')
         
         
     def test_difference_indicator(self):
@@ -135,14 +168,30 @@ class IndicatorTests(TestCase):
         value = i.value(self.view, self.record)
         self.assertEqual(value, -8) 
         
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '-8')
+        
         
     def test_date_indicator(self):
     
-        i = Indicator.create_with_attribute('Date', Attribute.TYPE_DATE)
+        i = Indicator.create_with_attribute('Date', Attribute.TYPE_DATE,
+                                            DateIndicator)
         
         self.view.add_indicator(i)
         
-        self.record.eav.date = datetime(2000, 1, 1)
+        self.record.eav.date = datetime(2000, 1, 2)
+        self.record.save()
     
         value = i.value(self.view, self.record)
-        self.assertEqual(value, datetime(2000, 1, 1))   
+        self.assertEqual(value, datetime(2000, 1, 2))   
+        
+        grid = self.view._create_data_grid()[1]
+        self.view._update_grid_with_calculated_data(grid)
+        
+        formated_value = i.format(self.view, grid[0])
+        
+        self.assertEqual(formated_value , '01/02/2000')

@@ -48,9 +48,7 @@ def report_results(request, id):
                               context_instance=RequestContext(request))
 
 
-
-
-     # todo: use the django view for this
+# todo: use the django view for this
 def switch_lang(request):
 
     next = request.REQUEST.get('next', None)

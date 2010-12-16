@@ -76,20 +76,20 @@ class ReportTests(TestCase):
         self.assertEqual(r.indicators.all()[0].concept, a)
 
 
-    def test_get_data_matrice_from_report(self):
+    def test_get_data_grid_from_report(self):
     
         report_view = ReportView.objects.create(report=self.report)
         report_view.add_indicator(self.height_indicator)
         
         self.assertEqual(report_view.get_labels(), ['Height'])
-        self.assertEqual(report_view.get_data_matrice(), [{'height': '10'}])
+        self.assertEqual(report_view.get_data_grid(), [{'height': '10'}])
         
     
     def test_create_view_from_report(self):
         report_view = ReportView.create_from_report(report=self.report)
         
         self.assertEqual(report_view.get_labels(), ['Height', 'Width'])
-        self.assertEqual(report_view.get_data_matrice(), [{'height': '10',
+        self.assertEqual(report_view.get_data_grid(), [{'height': '10',
                                                            'width': '2'}])
  
     def test_view_indicators_can_be_ordered(self):
@@ -104,9 +104,9 @@ class ReportTests(TestCase):
         self.assertEqual(report_view.get_labels(), ['Height', 'Width'])
         self.assertEqual(reversed_report_view.get_labels(), ['Width', 'Height'])
        
-        self.assertEqual(report_view.get_data_matrice(), [{'height': '10',
+        self.assertEqual(report_view.get_data_grid(), [{'height': '10',
                                                            'width': '2'}])
-        self.assertEqual(report_view.get_data_matrice(), [{'width': '2',
+        self.assertEqual(report_view.get_data_grid(), [{'width': '2',
                                                            'height': '10'}])   
    
    
@@ -138,7 +138,7 @@ class ReportTests(TestCase):
                                  indicator=self.width_indicator)
         
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
-        self.assertEqual(self.view.get_data_matrice(), [{'height': '10', 
+        self.assertEqual(self.view.get_data_grid(), [{'height': '10', 
                                                            'width': '2', 
                                                            'area': '20', }]) 
        
@@ -156,7 +156,7 @@ class ReportTests(TestCase):
         self.view.add_indicator(i)
 
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
-        self.assertEqual(self.view.get_data_matrice(), [{'height': '10', 
+        self.assertEqual(self.view.get_data_grid(), [{'height': '10', 
                                                            'width': '2', 
                                                            'area': '20'}]) 
 
@@ -172,7 +172,7 @@ class ReportTests(TestCase):
         self.view.add_indicator(i)
 
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
-        self.assertEqual(self.view.get_data_matrice(), [{'height': '10', 
+        self.assertEqual(self.view.get_data_grid(), [{'height': '10', 
                                                            'width': '2', 
                                                            'area': '20', }]) 
 
@@ -199,9 +199,9 @@ class ReportTests(TestCase):
         self.assertEqual(params[1].order, 3)
         
         # todo: gives a way to access the data before formating
-        # e.g: get_data_matrice VS get_formated_data_matrice
+        # e.g: get_data_grid VS get_formated_data_grid
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area'])
-        self.assertEqual(self.view.get_data_matrice(), [{'height': '10', 
+        self.assertEqual(self.view.get_data_grid(), [{'height': '10', 
                                                            'width': '2', 
                                                            'area': '20', }]) 
         
@@ -243,7 +243,7 @@ class ReportTests(TestCase):
         
         self.assertEqual(self.view.get_labels(), ['Height', 'Width', 
                                                   'Area', 'Average'])
-        self.assertEqual(self.view.get_data_matrice(), [{'height': '10', 
+        self.assertEqual(self.view.get_data_grid(), [{'height': '10', 
                                                            'width': '2', 
                                                            'area': '20', 
                                                            'average': '0.5'}]) 

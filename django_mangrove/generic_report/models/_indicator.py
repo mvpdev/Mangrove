@@ -330,6 +330,13 @@ class RateIndicator(IndicatorType):
         return round(val * 100, 2)
 
 
+    def format(self, view, data):
+        """
+            Return the rate with a "%" sign
+        """
+        return "%s %%" % self.value(view, data)
+
+
 
 class AverageIndicator(IndicatorType): 
 
@@ -403,10 +410,15 @@ class DateIndicator(IndicatorType):
         
     # todo: make format more efficient        
     def format(self, view, data):
+        """
+            Return a date according to the view format or any aggregator format.
+        """
         indicator = self.proxy.all()[0]
         date = self.value(view, data)
+
         if view.aggregators.all().exists():
             aggregator = view.aggregators.all()[0]
             if aggregator.indicator == indicator:
                 return aggregator.format(date)
+
         return date.strftime(view.time_format)

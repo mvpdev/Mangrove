@@ -70,7 +70,7 @@ class ReportView(models.Model):
                             default=__('default'))
     time_format = models.CharField(max_length=32, 
                                    verbose_name=__(u'time format'),
-                                   default='%m/%d/%y')  
+                                   default='%m/%d/%Y')  
 
 
     def get_selected_indicators(self):
@@ -99,43 +99,78 @@ class ReportView(models.Model):
     def get_labels(self):
         return [si.name for si in self.get_selected_indicators()]
       
-
-    # cache that
-    def get_data_matrice(self):
-    
-        matrice = []
+   
+    def _create_data_grid(self):
+        """
+            Turn records into a list or sorted dicts
+        """
         records = self.report.records.all()
-        sis = self.selected_indicators.all().order_by('order')
         indicators = self.get_selected_indicators()
-        
-        # first, extract data from record as a dict
-        matrice = [record.to_sorted_dict(indicators) for record in records]
-         
-        # todo: optimize extraction / calculation by separating indicator
-        # for both process and avoiding extracting value indicators twice
-        # secondly,calculate the data 
-        
-        # Todo: cache this basic extraction, use it as a base for the other views
-        for record in matrice:
+        grid = [record.to_sorted_dict(indicators) for record in records]
+        return indicators, grid
+       
+    
+    def _update_grid_with_calculated_data(self, grid, indicators=None):
+        """
+            Fill the grid with data calculated from it.
+            
+            WARNING:
+            
+            This modifies the grid in place but return the grid for convenience.
+        """
+        # todo: optimise this to only call value indicator that calculate it
+        indicators = indicators or self.get_selected_indicators()
+        for record in grid:
             for indic in indicators:
                 record[indic.concept.slug] = indic.value(self, record) 
+        return grid
+                
 
-        # thirdly aggregate / filter the data
+    def _aggregate_data_grid(self, grid):
+        """
+            Fill the grid with data calculated from it
+        """
         for aggregator in self.aggregators.all():
-            matrice = aggregator.get_aggregated_data(matrice)
+            grid = aggregator.get_aggregated_data(grid)
+        return grid
+
+
+    def _format_data_grid(self, grid, indicators=None):
+        """
+            Fill the grid with formated.
+            
+            WARNING:
+            
+            This modifies the grid in place but return the grid for convenience.
+            
+            You can't call update_grid_with_calulated_data() after it since 
+            all values will be strings.
+        """
+        indicators = indicators or self.get_selected_indicators()
+        for record in grid:
+            for indic in indicators:
+                record[indic.concept.slug] = indic.format(self, record)
+        return grid
+        
+
+    # cache that
+    def get_data_grid(self):
+    
+        indicators, grid = self._create_data_grid()
+         
+        # Todo: cache this basic extraction, use it as a base for the other views
+        self._update_grid_with_calculated_data(grid, indicators)
+
+        grid = self._aggregate_data_grid(grid)
 
         # calculate the calculated indicators again so stuff like average get
         # it right
-        for record in matrice:
-            for indic in indicators:
-                record[indic.concept.slug] = indic.value(self, record)  
+        self._update_grid_with_calculated_data(grid, indicators)
        
         # enventually, format the data 
-        for record in matrice:
-            for indic in indicators:
-                record[indic.concept.slug] = indic.format(self, record)
+        self._format_data_grid(grid, indicators)
         
-        return matrice
+        return grid
             
         
     def get_extracted_data(self):
