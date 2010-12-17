@@ -233,6 +233,11 @@ margin: 1em;
 font-style: italic;
 }
 
+#mangrove form p label {
+width:15ex;
+display:block;
+float:left;
+}
 
 /** needed for tabs **/
 

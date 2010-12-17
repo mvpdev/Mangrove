@@ -12,8 +12,12 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils.translation import check_for_language
 from django.core.paginator import Paginator, InvalidPage, EmptyPage
+from django.core.urlresolvers import reverse
+
 
 from .models import Report, ReportView
+
+from generic_report_admin.forms import RecordForm
 
 
 @login_required
@@ -41,6 +45,18 @@ def report_results(request, id):
 
         header = view.get_labels()
         body = view.get_data_grid()
+        
+        if request.method == 'POST':
+            form = RecordForm(request.POST, report=report)
+            
+            if form.is_valid():
+                form.save()
+                url = "%s?page=%s" % (reverse('report-results', 
+                                              args=(report.pk,)),
+                                      page)
+                redirect(url)
+        else:
+            form = RecordForm(report=report)
         
     ctx = locals()
 

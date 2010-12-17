@@ -285,11 +285,10 @@ class IndicatorType(models.Model):
 
 class ValueIndicator(IndicatorType):
 
-    verbose_name = __("Value Indicator")
-    verbose_name_plural = __("Value Indicators")
-
     class Meta:
         app_label = 'generic_report'
+        verbose_name = __("Value Indicator")
+        verbose_name_plural = __("Value Indicators")
 
 
 class LocationIndicator(IndicatorType):
@@ -421,6 +420,9 @@ class DateIndicator(IndicatorType):
 
     class Meta:
         app_label = 'generic_report'
+        verbose_name = __("Date Indicator")
+        verbose_name_plural = __("Date Indicators")
+        
         
     # todo: make format more efficient        
     def format(self, view, data):

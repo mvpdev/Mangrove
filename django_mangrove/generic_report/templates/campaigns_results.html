@@ -94,6 +94,14 @@
     
     </table>
     
+    {{ form.errors }}
+    
+    <form method="post" action=".">
+        {{ form.as_p }}
+        <input type='submit' value='Add'>
+        {% csrf_token %}
+    </form>
+    
     {% else %}
     
     {% if view %}

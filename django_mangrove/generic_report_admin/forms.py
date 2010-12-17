@@ -61,7 +61,7 @@ class RecordForm(forms.Form):
         
         for indicator in report.get_stand_alone_indicators():
         
-            if indicator.strategy_type.name == ValueIndicator._meta.verbose_name:
+            if indicator.strategy_type.model in ('valueindicator, dateindicator'):
                 field = mapping[indicator.concept.datatype]()
             else:
                 locations = Area.objects.filter(kind=indicator.strategy.area_type)

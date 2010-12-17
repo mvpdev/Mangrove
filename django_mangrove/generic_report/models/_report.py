@@ -46,10 +46,10 @@ class Report(models.Model):
             Return all indicators for this report that doesn't need any
             other indicators to exist.
         """
-        sa_inds = (ValueIndicator._meta.verbose_name, 
-                   LocationIndicator._meta.verbose_name)
+        
+        sa_inds = ('valueindicator', 'dateindicator', 'locationindicator')
         indicators = self.indicators.all()
-        return [i for i in indicators if i.strategy_type.name in sa_inds]
+        return [i for i in indicators if i.strategy_type.model in sa_inds]
             
 
 
