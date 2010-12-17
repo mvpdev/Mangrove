@@ -9,7 +9,9 @@
 from django import forms
 from django.template.defaultfilters import slugify
 
-from generic_report.models import Record
+from generic_report.models import Record, ValueIndicator
+
+from simple_locations.models import Area
 
 
 class RecordFormBase(forms.Form):
@@ -59,10 +61,11 @@ class RecordForm(forms.Form):
         
         for indicator in report.get_stand_alone_indicators():
         
-            if indicator.strategy_type.name == u'value indicator':
+            if indicator.strategy_type.name == ValueIndicator._meta.verbose_name:
                 field = mapping[indicator.concept.datatype]()
             else:
-                field = LocationField()
+                locations = Area.objects.filter(kind=indicator.strategy.area_type)
+                field = forms.ModelChoiceField(queryset=locations)
             
             fields[indicator.concept.slug] = field
             

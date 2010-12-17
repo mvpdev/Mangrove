@@ -10,7 +10,7 @@ from django.db import models
 from django.utils.datastructures import SortedDict
 from django.db.models.signals import m2m_changed
 
-from _indicator import SelectedIndicator
+from _indicator import SelectedIndicator, ValueIndicator, LocationIndicator
 
 
 """
@@ -46,7 +46,8 @@ class Report(models.Model):
             Return all indicators for this report that doesn't need any
             other indicators to exist.
         """
-        sa_inds = ('value indicator', 'location indicator')
+        sa_inds = (ValueIndicator._meta.verbose_name, 
+                   LocationIndicator._meta.verbose_name)
         indicators = self.indicators.all()
         return [i for i in indicators if i.strategy_type.name in sa_inds]
             
