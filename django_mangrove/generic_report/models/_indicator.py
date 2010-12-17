@@ -18,6 +18,8 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 
+from simple_locations.models import AreaType
+
 
 # todo: refactor selected_indictor to use the through param
 class SelectedIndicator(models.Model):
@@ -286,6 +288,15 @@ class ValueIndicator(IndicatorType):
     class Meta:
         app_label = 'generic_report'
 
+
+class LocationIndicator(IndicatorType):
+
+    class Meta:
+        app_label = 'generic_report'
+        verbose_name = __("Location Indicator")
+        verbose_name_plural = __("Location Indicators")
+        
+    area_type = models.ForeignKey(AreaType, related_name='type_of')
 
 
 # todo: add checks on indicator parameters type (can't sum a district)

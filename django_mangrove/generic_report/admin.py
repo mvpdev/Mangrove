@@ -23,6 +23,7 @@ admin.site.register(AverageIndicator)
 admin.site.register(ProductIndicator)
 admin.site.register(DifferenceIndicator)
 admin.site.register(DateIndicator)
+admin.site.register(LocationIndicator)
 
 admin.site.register(Aggregator)
 admin.site.register(DateAggregator)
