@@ -36,9 +36,20 @@ class Report(models.Model):
 
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
 
+
     def __unicode__(self):
         return _(u'%(name)s') % {'name': self.name}
 
+    
+    def get_stand_alone_indicators(self):
+        """
+            Return all indicators for this report that doesn't need any
+            other indicators to exist.
+        """
+        sa_inds = ('value indicator', 'location indicator')
+        indicators = self.indicators.all()
+        return [i for i in indicators if i.strategy_type.name in sa_inds]
+            
 
 
 # todo: check that indicators are only from the report indicator

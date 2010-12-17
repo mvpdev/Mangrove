@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     "eav",
     "uni_form",
     "rapidsms_xforms",
+    'generic_report_admin',
 ]
 
 
