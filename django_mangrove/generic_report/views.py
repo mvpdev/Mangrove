@@ -46,15 +46,16 @@ def report_results(request, id):
         header = view.get_labels()
         body = view.get_data_grid()
         
+        url = "%s?page=%s" % (reverse('report-results', 
+                                      args=(report.pk,)),
+                                      page.number)
+        
         if request.method == 'POST':
             form = RecordForm(request.POST, report=report)
             
             if form.is_valid():
                 form.save()
-                url = "%s?page=%s" % (reverse('report-results', 
-                                              args=(report.pk,)),
-                                      page)
-                redirect(url)
+                return redirect(url)
         else:
             form = RecordForm(report=report)
         
