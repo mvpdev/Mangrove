@@ -9,10 +9,10 @@ from eav.models import *
 
 eav.register(Record)
 
-class FormsTests(TestCase):
+class RecordFormsTests(TestCase):
 
     """
-        Testing report basics such as reports creation, views, indicators, etc.
+        Testing report filling using forms.
     """
 
 

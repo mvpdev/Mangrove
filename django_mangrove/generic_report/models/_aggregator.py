@@ -244,7 +244,7 @@ class DateAggregator(AggregatorType):
  
  
     @classmethod
-    def aggregate_by_year(cls, value):
+    def aggregate_by_year(cls, date):
         return date.year
     
 
@@ -297,10 +297,16 @@ class LocationAggregator(AggregatorType):
                                   verbose_name=__(u'Area Type'),
                                   related_name='agregated_by')
 
+    def __init__(self, *args, **kwargs):
+        AggregatorType.__init__(self, *args, **kwargs)
+        if not self.area_type_id:
+            try:
+               self.area_type = AreaType.objects.all()[0]
+            except AreaType.DoesNotExist:
+                pass
+
 
     # todo: make a filter method : e.g. if you aggregate by district, remove countries
-
-
     def get_aggregated_value(self, location):
         """
             Return the location object which is the common parent
@@ -335,3 +341,24 @@ class LocationAggregator(AggregatorType):
             any of its parent
         """
         return bool(self.get_closest_matching_location_with_type(location))   
+        
+        
+class ValueAggregator(AggregatorType): 
+    """
+        Aggregate values. Returns the value 'as is'.
+    """
+
+    class Meta:
+        app_label = 'generic_report'
+        
+
+
+    def get_aggregated_value(self, value):
+        """
+            Return the location object which is the common parent
+        """
+        
+        return value
+        
+     
+ 

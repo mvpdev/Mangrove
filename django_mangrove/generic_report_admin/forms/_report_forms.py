@@ -3,15 +3,35 @@
 # vim: ai ts=4 sts=4 et sw=4
 
 """
-    Forms and tools to create and fille reports from generic reports
+    Forms and tools to create and fill reports from generic_reports
 """
 
 from django import forms
 from django.template.defaultfilters import slugify
 
-from generic_report.models import Record, ValueIndicator
-
 from simple_locations.models import Area
+
+from generic_report.models import Record, ValueIndicator, Report
+
+
+class ReportForm(forms.ModelForm):
+    """
+        Just create a report
+    """
+    
+    class Meta:
+        model = Report
+    
+    def save(*args, **kwargs):
+        
+        report = forms.ModelForm.save(*args, **kwargs)
+        
+        # always provide a report with a default view
+        if not report.views.exists():
+            ReportView.create_from_report(report)
+            
+        return report
+
 
 
 class RecordFormBase(forms.Form):
@@ -38,7 +58,7 @@ class RecordFormBase(forms.Form):
 
 class RecordForm(forms.Form):
     """
-        Base class for report filler forms that we create on the fly.
+        Factory to create report form on the fly.
     """
     
     CONCEPT_TYPE_TO_FORM_FIELDS = (('text', forms.CharField),
@@ -85,5 +105,6 @@ class RecordForm(forms.Form):
 
         return cls.get_form(report)(*args, **kwargs)
         
+
 
 

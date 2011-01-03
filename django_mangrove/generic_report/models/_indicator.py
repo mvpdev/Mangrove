@@ -17,6 +17,7 @@ from django.utils.translation import ugettext as _, ugettext_lazy as __
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
+from django.db.models import F
 
 from simple_locations.models import AreaType
 
@@ -31,6 +32,8 @@ class SelectedIndicator(models.Model):
     class Meta:
         app_label = 'generic_report'
         unique_together = (('view','indicator','order'),)
+        ordering = ('order',)
+        
 
     view = models.ForeignKey('generic_report.ReportView', 
                              related_name='selected_indicators')
@@ -49,6 +52,54 @@ class SelectedIndicator(models.Model):
                 self.order = 1
         
         models.Model.save(self, *args, **kwargs)
+
+    
+    def increase_order(self):
+        """
+            If the current selected indicator is at the highest rank,
+            increase it's rank of one, decreasing the rank of the first 
+            indicator on top of it.
+            
+            Warning:
+            - this method does't affect the other Python object
+            attribute, therefor you must refresh your queryset as well
+            when you use it.
+            - this method increment the value of order in this object and in 
+              the database but doesn't save the current object.
+            
+        """
+        fresher_self = SelectedIndicator.objects.get(pk=self.pk)
+        upper_indicators = self.view.selected_indicators.filter(order__gt=fresher_self.order)
+        if upper_indicators:
+            upper_indicator = upper_indicators[0]
+            upper_indicator.order = fresher_self.order
+            self.order = fresher_self.order = fresher_self.order + 1
+            fresher_self.save()
+            upper_indicator.save()
+            
+
+    def decrease_order(self):
+        """
+            If the current selected indicator is at the lowest rank,
+            deacrease it's rank of one, increasing the rank of the first 
+            indicator below it.
+            
+            Warning:
+            - this method does't affect the other Python object
+            attribute, therefor you must refresh your queryset as well
+            when you use it.
+            - this method increment the value of order in this object and in 
+              the database but doesn't save the current object.
+        """
+        fresher_self = SelectedIndicator.objects.get(pk=self.pk)
+        lower_indicators = self.view.selected_indicators.filter(order__lt=fresher_self.order)
+        if lower_indicators:
+            lower_indicator = tuple(lower_indicators)[-1]
+            lower_indicator.order = fresher_self.order
+            self.order = fresher_self.order = fresher_self.order - 1
+            fresher_self.save()
+            lower_indicator.save()
+        
 
     def __unicode__(self):
         return "Selected indicator %(order)s for '%(view)s': %(indicator)s" % {

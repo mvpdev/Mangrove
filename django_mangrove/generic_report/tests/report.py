@@ -247,3 +247,75 @@ class ReportTests(TestCase):
                                                            'width': '2', 
                                                            'area': '20', 
                                                            'average': '0.5'}]) 
+                                                           
+                                                           
+    def test_indicator_status(self):
+        area = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                    ProductIndicator, 
+                                    (self.height_indicator, 
+                                     self.width_indicator))
+
+        self.report.indicators.add(area)
+        
+        self.assertEqual(self.view.get_report_indicators_user_choices(), 
+                         SortedDict(((self.height_indicator, True), 
+                                    (self.width_indicator, True), (area, False)))) 
+
+
+    def test_change_order(self):
+        i = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                    ProductIndicator, 
+                                    (self.height_indicator,
+                                     self.width_indicator))
+
+        self.view.add_indicator(i)
+        
+        height, width, area = self.view.selected_indicators.all()
+        
+        self.assertEqual(self.view.get_labels(), ['Height', 'Width', 'Area']) 
+                   
+        width.decrease_order()
+        self.assertEqual(self.view.get_labels(), ['Width', 'Height',  'Area']) 
+        
+        width.decrease_order()
+        self.assertEqual(self.view.get_labels(), ['Width', 'Height',  'Area']) 
+                        
+        height.increase_order()
+        self.assertEqual(self.view.get_labels(), ['Width',  'Area', 'Height'])     
+        
+        height.increase_order()
+        self.assertEqual(self.view.get_labels(), ['Width',  'Area', 'Height'])  
+        
+    
+    def test_selected_indicators(self):
+    
+        area = Indicator.create_with_attribute('Area', Attribute.TYPE_INT, 
+                                            ProductIndicator, 
+                                            (self.height_indicator, 
+                                             self.width_indicator))
+        date = Indicator.create_with_attribute('Misc', Attribute.TYPE_OBJECT, 
+                                                ValueIndicator)
+        
+        self.report.indicators.add(area)
+        self.view.add_indicator(date)
+        
+        a = Aggregator.objects.create(strategy=DateAggregator.objects.create(),
+                                      indicator=self.height_indicator,
+                                      view=self.view)
+        
+        self.assertEqual(self.view.get_selected_indicators(),
+                         [self.height_indicator, self.width_indicator, date])
+        self.assertEqual(self.view.get_selectable_indicators(),
+                         [self.height_indicator, self.width_indicator, area])
+        self.assertEqual(self.view.get_indicators_to_display(),
+                         [self.height_indicator, self.width_indicator])
+                         
+    def test_default_view(self):
+        #todo: enforce default view at the model level
+        
+        v = ReportView.create_from_report(report=self.report)
+
+        self.assertEqual(self.report.views.count(), 2)
+        self.assertEqual(self.report.default_view, v)
+        
+                                                                  

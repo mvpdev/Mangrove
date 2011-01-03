@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "uni_form",
     "rapidsms_xforms",
     'generic_report_admin',
+    'mangrove_demo'
 ]
 
 
@@ -155,7 +156,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'generic_report.middleware.ViewNameMiddleware',
+    'mangrove_demo.middleware.ViewNameMiddleware',
 )
 
 TEMPLATE_DIRS = (

@@ -45,10 +45,10 @@ if settings.DEBUG:
               'show_indexes': True}
             ),
  
-        url("%s/generic_report/(?P<path>.*)$" % settings.MEDIA_URL.strip('/'),
+        url("%s/mangrove_demo/(?P<path>.*)$" % settings.MEDIA_URL.strip('/'),
             "django.views.static.serve",
             {"document_root":
-              os.path.join(settings.PROJECT_DIR, 'generic_report', 'static'),
+              os.path.join(settings.PROJECT_DIR, 'mangrove_demo', 'static'),
               'show_indexes': True}
             ),
 
@@ -61,7 +61,7 @@ urlpatterns += patterns("",
     url(r'^login/$', login, name='ntd-login', 
         kwargs={"template_name" : 'login.html'}),
     url(r'^logout/$', logout_then_login, name='ntd-logout'),
-    url(r'^', include('generic_report.urls'), name='mangrove-dashboard'),    
+    url(r'^', include('mangrove_demo.urls'), name='mangrove-dashboard'),    
     
 )
 

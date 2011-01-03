@@ -1,3 +1,16 @@
+
+
+
+/*****
+
+Not sure you want to use this stylesheet as an exemple since my CSS is pretty
+messy. I trust you to do much better :-)
+
+******/
+
+
+
+
 /*** GLOBAL ***/
 
 a {
@@ -66,6 +79,11 @@ background:url("../images/delete.gif") no-repeat;
 background-position:0 -24px;
 }
 
+
+.confirm input {
+margin:0 1em;
+}
+
 /*** HEADER ***/
 
 #mangrove #header {
@@ -106,7 +124,6 @@ margin: 1em;
     height: 40px;
 	z-index: 500;
 	background: url(../images/nav/repeat.jpg) repeat-x;
-	/* height: 77px; /* set this for having the double sized menu */
 	margin:0;
 }
 
@@ -147,7 +164,7 @@ margin-right:1em;
 	height:37px;
 }
 
-/*** Campaigns results (previously dashboard) ***/
+/*** Report results ***/
 
 
 #dashboard #pagination h3, 
@@ -239,59 +256,89 @@ display:block;
 float:left;
 }
 
-/** needed for tabs **/
 
-#mangrove .ui-tabs .ui-tabs-hide {
-    position: absolute;
-    left: -10000px;
-}
+/*** MANAGE REPORT ***/
 
-#mangrove .ui-tabs ul a {
-color: black;
-}
-
-#mangrove .ui-tabs ul a:visited {
-color: black;
-}
-
-#mangrove .ui-tabs-selected {
-list-style-type: circle;
-}
-
-#mangrove ul .ui-tabs-selected a {
-color:grey;
-}
-
-#mangrove .ui-tabs ul a:hover {
-color:grey;
-}
-
-
-/*** MANAGE CAMPAIGN ***/
-
-#mangrove #campaigns-list #content ul li {
+#mangrove #report-list #content ul li {
 height:2em;
 margin:0.5em;
 }
 
 
-#mangrove #campaigns-list #content ul .campaign-link {
+#mangrove #report-list #content ul .report-link {
 display: block;
 float:left;
 margin-right: 1em;
 color: black;
 text-decoration: none;
+font-size:1.5em;
+position: relative;
+top: -0.2em;
 }
 
-#mangrove #campaigns-list #content ul .campaign-link:hover {
+#mangrove #edit-report p {
+margin-top:1em;
+}
+
+#mangrove #edit-report #content ul li{
+margin-top: 0.5em;
+}
+
+#mangrove #edit-report #content ul li .edit-view-link {
+display: block;
+float:left;
+margin-right: 1em;
+color: black;
+font-size:1.1em;
+position: relative;
+}
+
+#mangrove #report-list #content ul .report-link:hover {
 text-decoration: underline;
 }
 
-#mangrove #campaigns-list #content ul li .delete {
+#mangrove #report-list #content ul li .edit {
 display: block;
-margin-top:-2px;
+float:left;
+padding-right: 2ex;
 }
 
+#mangrove #report-list #content ul li .delete,
+#mangrove #edit-report #content ul li .delete{
+display: block;
+}
+
+/*** Manage views ***/
+
+
+#edit-view #edit-view-nav li {
+float: left;
+margin-left: 3em;
+}
+
+#edit-view #data-display-form p {
+text-align:right;
+}
+
+#edit-view #data-display-form td,
+#edit-view #data-display-form th {
+text-align:center;
+}
+
+#edit-view #data-display-form table span {
+margin: 0 1em;
+}
+
+#edit-view #data-display-form table a {
+text-decoration: none;
+font-size: 1.2em;
+color:white;
+border: 1px solid grey;
+}
+
+#edit-view #aggregation-form li {
+list-style-type: none;
+}
 
 /* ---- LOGIN ---- */	
 

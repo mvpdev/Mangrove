@@ -36,6 +36,10 @@ class Report(models.Model):
 
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
 
+    @property
+    def default_view(self):
+        return self.views.get(name__iexact="default")
+    
 
     def __unicode__(self):
         return _(u'%(name)s') % {'name': self.name}
@@ -82,8 +86,11 @@ class ReportView(models.Model):
                             default=__('default'))
     time_format = models.CharField(max_length=32, 
                                    verbose_name=__(u'time format'),
-                                   default='%m/%d/%Y')  
+                                   default='%m/%d/%Y',
+                                   blank=True)  
 
+    # todo: rework this part. Too many get_something_indicators. This is
+    # neither efficient nor clear.
 
     def get_selected_indicators(self):
         """
@@ -92,7 +99,26 @@ class ReportView(models.Model):
             - remove indicators that can not be displayed for this specific view
         """
         sis = self.selected_indicators.all().order_by('order')
-        indicators = [si.indicator for si in sis]
+        return [si.indicator for si in sis]
+
+
+    def get_indicators(self):
+        """
+            Return all indicators, but with selected indicator ordered first
+            so order is kept.
+        """
+        inds = self.get_selected_indicators()
+        return inds + [i for i in self.report.indicators.all() if i not in inds]
+        
+
+    # todo: add unit test for this
+    def get_selectable_indicators(self, queryset=None):
+        """
+            Return the indicators that can be displayed for this view by
+            removing indicators that can not be displayed for this specific view
+        """
+        
+        indicators = queryset or self.get_indicators()
         
         # if there is an aggregation, remove non numeric indicators
         if self.aggregators.all().exists():
@@ -107,9 +133,17 @@ class ReportView(models.Model):
             return filtered_indicators
         return indicators
 
+    
+    def get_indicators_to_display(self):
+        """
+            Filter selected indicators to get only the one we want and can 
+            display
+        """
+        return self.get_selectable_indicators(self.get_selected_indicators())
+
 
     def get_labels(self):
-        return [si.name for si in self.get_selected_indicators()]
+        return [si.name for si in self.get_indicators_to_display()]
       
    
     def _create_data_grid(self):
@@ -117,7 +151,7 @@ class ReportView(models.Model):
             Turn records into a list or sorted dicts
         """
         records = self.report.records.all()
-        indicators = self.get_selected_indicators()
+        indicators = self.get_selectable_indicators()
         grid = [record.to_sorted_dict(indicators) for record in records]
         return indicators, grid
        
@@ -131,7 +165,7 @@ class ReportView(models.Model):
             This modifies the grid in place but return the grid for convenience.
         """
         # todo: optimise this to only call value indicator that calculate it
-        indicators = indicators or self.get_selected_indicators()
+        indicators = indicators or self.get_selectable_indicators()
         for record in grid:
             for indic in indicators:
                 record[indic.concept.slug] = indic.value(self, record) 
@@ -149,7 +183,8 @@ class ReportView(models.Model):
 
     def _format_data_grid(self, grid, indicators=None):
         """
-            Fill the grid with formated.
+            Fill the grid with formated data, and removing data that is
+            not meant to be displayed.
             
             WARNING:
             
@@ -158,10 +193,14 @@ class ReportView(models.Model):
             You can't call update_grid_with_calulated_data() after it since 
             all values will be strings.
         """
-        indicators = indicators or self.get_selected_indicators()
+        indicators = indicators or self.get_indicators_to_display()
+        sis = SortedDict((i.concept.slug, i) for i in indicators)
         for record in grid:
-            for indic in indicators:
-                record[indic.concept.slug] = indic.format(self, record)
+            for key in record.keys():
+                try:
+                    record[key] = sis[key].format(self, record)
+                except KeyError:
+                    del record[key]
         return grid
         
 
@@ -180,7 +219,7 @@ class ReportView(models.Model):
         self._update_grid_with_calculated_data(grid, indicators)
        
         # enventually, format the data 
-        self._format_data_grid(grid, indicators)
+        self._format_data_grid(grid)
         
         return grid
             
@@ -218,6 +257,19 @@ class ReportView(models.Model):
             self.report.indicators.add(indicator)
         
         return vi
+    
+    
+    def get_report_indicators_user_choices(self):
+        """
+            Return a dictionary mapping all indicators from this report
+            to a boolean telling if it has been selected by the user to be 
+            displayed in this view.
+        """
+        sis = self.selected_indicators.all()
+        indicators = SortedDict(((si.indicator, True) for si in sis))
+        for i in self.report.indicators.all():
+            indicators[i] = indicators.get(i, False)
+        return indicators
         
         
     def __unicode__(self):
@@ -252,12 +304,14 @@ class Record(models.Model):
     def to_sorted_dict(self, indicators):
     
         data = SortedDict()
+        print list(indicators)
         for indicator in indicators:
             try:
                 attr = indicator.concept.slug
                 data[attr] = getattr(self.eav, attr)
             except AttributeError:
                 pass
+        print data
         return data
 
 
