@@ -11,7 +11,7 @@ from django.template.defaultfilters import slugify
 
 from simple_locations.models import Area
 
-from generic_report.models import Record, ValueIndicator, Report
+from generic_report.models import Record, ValueIndicator, Report, ReportView
 
 
 class ReportForm(forms.ModelForm):
