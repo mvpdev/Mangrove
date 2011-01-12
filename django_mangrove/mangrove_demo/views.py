@@ -114,8 +114,10 @@ def edit_view_indicators(request, id):
     # it can as well reveal important bug, so we want it to be an explicit error
     view = get_object_or_404(ReportView, id=id)
    
+    url = reverse('edit-view-indicators', args=(id,))
+   
     if request.method == 'POST': 
-            url = reverse('edit-view-indicators', args=(id,))
+            
             
             create_form = IndicatorCreationForm(data=request.POST,
                                             report_view=view, prefix='create')
@@ -144,6 +146,21 @@ def edit_view_indicators(request, id):
                     return redirect(url)
                 
     else:
+        # you can create a separate view for the remove action, I'm just
+        # doing it here for my convenience
+        # todo: remove dependancies when removing an indicator, part of calculation
+        # todo: make a method for deletion to avoid designer to type this code
+        to_remove = request.GET.get('remove', 0)
+        if to_remove:  
+            indicator = get_object_or_404(Indicator, id=to_remove)
+            report = view.report
+            view.report.indicators.remove(indicator)
+            # remove the indicator from the report and all the views
+            for view in report.views.all():
+                SelectedIndicator.objects.filter(view=view, 
+                                                indicator=indicator).delete()
+            return redirect(url)
+    
         # in django, you should add a prefix to forms if you have several of
         # them on the same page to give a namespace to the forms data
         # forms of edit_form are prefixed dynamically

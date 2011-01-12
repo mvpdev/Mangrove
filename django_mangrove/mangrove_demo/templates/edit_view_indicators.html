@@ -19,6 +19,9 @@ to manage indicators, and a form to add them.
 {% for form in edit_form %}
 {{ form.errors }}
 {{ form.as_p }}
+<div class="button">
+<a href="{% url edit-view-indicators view.id %}?remove={{ form.instance.id }}">Remove</a> 
+</div>
 {% endfor %}
 <div class="button"><input type="submit" value="Save" name="save-button"/></div>
 </fieldset>

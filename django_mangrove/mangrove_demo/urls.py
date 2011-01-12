@@ -81,7 +81,7 @@ urlpatterns = patterns("",
     url(r'view/(?P<id>\d+)/edit/data-display/$',  
         "mangrove_demo.views.edit_view_data_display",
         name='edit-view-data-display'), 
-       
+   
         
     url(r'$',  redirect_to, { 'url': "/reports/manage/" }, name='dashboard')
 )
