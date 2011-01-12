@@ -89,6 +89,7 @@ class ReportView(models.Model):
                                    default='%m/%d/%Y',
                                    blank=True)  
 
+   
     # todo: rework this part. Too many get_something_indicators. This is
     # neither efficient nor clear.
 
@@ -110,6 +111,15 @@ class ReportView(models.Model):
         inds = self.get_selected_indicators()
         return inds + [i for i in self.report.indicators.all() if i not in inds]
         
+    
+    def get_numerical_indicators(self, queryset=None):  
+        """
+            Return indicators with INT or FLOAT concepts
+        """
+        indicators = queryset or self.get_indicators()
+        types = (eav.models.Attribute.TYPE_INT, eav.models.Attribute.TYPE_FLOAT) 
+        return [i for i in indicators if i.concept.datatype in types]
+
 
     # todo: add unit test for this
     def get_selectable_indicators(self, queryset=None):
@@ -123,12 +133,9 @@ class ReportView(models.Model):
         # if there is an aggregation, remove non numeric indicators
         if self.aggregators.all().exists():
             aggregator = self.aggregators.all()[0]
-            types = (eav.models.Attribute.TYPE_INT, 
-                     eav.models.Attribute.TYPE_FLOAT) 
-            filtered_indicators = []
+            filtered_indicators = self.get_numerical_indicators(indicators)
             for indicator in indicators:
-                if indicator.concept.datatype in types \
-                   or indicator.concept == aggregator.indicator.concept:
+                if indicator.concept == aggregator.indicator.concept:
                    filtered_indicators.append(indicator)
             return filtered_indicators
         return indicators
@@ -242,7 +249,6 @@ class ReportView(models.Model):
   
   
     # todo: create similar method for removing indicators
-    # todo: check if indicators belong to the report first
     def add_indicator(self, indicator, order=None):
         """
             Add an indicator to the current view. if it doesn't exists in 
@@ -250,13 +256,17 @@ class ReportView(models.Model):
             Returns the ViewIndactor object responsible for the relation
             between the indicator and the view.
         """
-        vi = SelectedIndicator.objects.create(view=self, indicator=indicator, 
-                                          order=order)
-       
-        if indicator not in self.report.indicators.all():
-            self.report.indicators.add(indicator)
         
-        return vi
+        if indicator not in self.get_selected_indicators():
+        
+            vi = SelectedIndicator.objects.create(view=self, 
+                                                  indicator=indicator, 
+                                                  order=order)
+           
+            if indicator not in self.report.indicators.all():
+                self.report.indicators.add(indicator)
+            
+            return vi
     
     
     def get_report_indicators_user_choices(self):
@@ -304,14 +314,12 @@ class Record(models.Model):
     def to_sorted_dict(self, indicators):
     
         data = SortedDict()
-        print list(indicators)
         for indicator in indicators:
             try:
                 attr = indicator.concept.slug
                 data[attr] = getattr(self.eav, attr)
             except AttributeError:
                 pass
-        print data
         return data
 
 

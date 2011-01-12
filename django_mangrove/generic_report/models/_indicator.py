@@ -152,7 +152,7 @@ class Indicator(models.Model):
     name = models.CharField(max_length=64, verbose_name=__(u'name'))
     
     # todo: this field need a descritpion for south to freeze it
-    concept = models.ForeignKey(eav.models.Attribute)   
+    concept = models.ForeignKey(eav.models.Attribute, blank=True)   
 
     report = models.ManyToManyField('generic_report.Report', 
                                     verbose_name=__(u'report'),
@@ -251,8 +251,8 @@ class Indicator(models.Model):
             fail if it needs to) then it calls 'create_from_attribute' on it.
         """
         
-        attr, created = eav.models.Attribute.objects.get_or_create(name=name, 
-                                                          datatype=attr_type)
+        attr = eav.models.Attribute.objects.create(name=name, 
+                                                   datatype=attr_type)
         return cls.create_from_attribute(attr, indicator_type, args, kwargs)
     
     
@@ -266,6 +266,15 @@ class Indicator(models.Model):
             This method is delegated to the strategy.
         """
         return self.strategy.add_param(indicator, order)
+  
+  
+    def get_dependancies(self):
+        """
+            Returns indicators required for this indicator to be calculated.
+            
+            This method is delegated to the strategy.
+        """
+        return self.strategy.get_dependancies()
   
      
     def __unicode__(self):
@@ -323,6 +332,14 @@ class IndicatorType(models.Model):
                                         indicator=indicator, 
                                         order=order)
 
+    def get_dependancies(self):
+        """
+            Returns indicator declared as parameters
+        """
+        proxy = self.proxy.all()[0]
+        return [p.indicator for p in Parameter.objects.filter(param_of=proxy)]
+        
+        
     
     def __unicode__(self):
         try:
@@ -343,7 +360,13 @@ class ValueIndicator(IndicatorType):
 
 
 class LocationIndicator(IndicatorType):
-
+    """
+        Indicator strategy expecting a Django model object in the EAV value.
+        
+        The model for now is strongly coupled with the application 
+        simple_location and therefor should be an AreaType object.
+    """
+    
     class Meta:
         app_label = 'generic_report'
         verbose_name = __("Location Indicator")
@@ -352,9 +375,14 @@ class LocationIndicator(IndicatorType):
     area_type = models.ForeignKey(AreaType, related_name='type_of')
 
 
-# todo: add checks on indicator parameters type (can't sum a district)
-class RatioIndicator(IndicatorType): 
 
+# todo: add checks on indicator parameters type (can't sum a district)
+# todo: merge with rate indicator
+class RatioIndicator(IndicatorType): 
+    """
+        Indicator strategy dividing two EAV values from two indicators.
+    """
+    
     class Meta:
         app_label = 'generic_report'
         
@@ -374,9 +402,21 @@ class RatioIndicator(IndicatorType):
         return round(val, 2)
 
 
+    def get_dependancies(self):
+        """
+            Returns numerator and denominator
+        """
+        return [self.numerator, self.denominator]
+
+
+
 # todo: add rate formating in the view
 class RateIndicator(IndicatorType): 
-
+    """
+        Indicator strategy dividing two EAV values from two indicators and then
+        make it a pourcentage (%).
+    """
+    
     class Meta:
         app_label = 'generic_report'
 
@@ -398,12 +438,22 @@ class RateIndicator(IndicatorType):
         """
             Return the rate with a "%" sign
         """
-        return "%s %%" % self.value(view, data)
+        return "%s %%" % data[self.proxy.all()[0].concept.slug]
 
+
+    def get_dependancies(self):
+        """
+            Returns numerator and denominator
+        """
+        return [self.numerator, self.denominator]
 
 
 class AverageIndicator(IndicatorType): 
-
+    """
+        Indicator strategy calculating the average of several EAV values 
+        from several indicators.
+    """
+    
     class Meta:
         app_label = 'generic_report'
         
@@ -419,7 +469,10 @@ class AverageIndicator(IndicatorType):
 
 
 class SumIndicator(IndicatorType): 
-
+    """
+        Indicator strategy summing several EAV values from several indicators.
+    """
+    
     class Meta:
         app_label = 'generic_report'
 
@@ -434,7 +487,11 @@ class SumIndicator(IndicatorType):
 
 
 class ProductIndicator(IndicatorType): 
-
+    """
+        Indicator strategy multiplying several EAV values
+        from several indicators.
+    """
+    
     class Meta:
         app_label = 'generic_report'
 
@@ -448,9 +505,12 @@ class ProductIndicator(IndicatorType):
                      (param.indicator.value(view, data) for param in parameters))
 
 
-
+# todo: check parameters: you can't subtract non numeric values
 class DifferenceIndicator(IndicatorType): 
-
+    """
+        Indicator strategy substracting two EAV values from two indicators.
+    """
+    
     class Meta:
         app_label = 'generic_report'
         
@@ -465,9 +525,20 @@ class DifferenceIndicator(IndicatorType):
         """
         return self.first_term.value(view, data) -\
                self.term_to_substract.value(view, data)
+
+
+    def get_dependancies(self):
+        """
+            Returns first_term and term_to_substract 
+        """
+        return [self.first_term, self.term_to_substract ]        
         
 
+
 class DateIndicator(IndicatorType): 
+    """
+        Indicator strategy expecting a Python date object in the EAV value.
+    """
 
     class Meta:
         app_label = 'generic_report'
@@ -482,6 +553,9 @@ class DateIndicator(IndicatorType):
         """
         indicator = self.proxy.all()[0]
         date = self.value(view, data)
+
+        if not date:
+            return None
 
         if view.aggregators.all().exists():
             aggregator = view.aggregators.all()[0]

@@ -17,7 +17,11 @@ from django.shortcuts import get_object_or_404
 
 from generic_report.models import Report, ReportView, SelectedIndicator, Indicator
 
-from generic_report_admin.forms import RecordForm, ViewForm, ViewAggregationForm
+from generic_report_admin.forms import (RecordForm, ViewForm, 
+                                        ViewAggregationForm, 
+                                        ViewIndicatorsForm, 
+                                        IndicatorCreationForm,
+                                        IndicatorChooserForm)
 
 
 @login_required
@@ -109,6 +113,45 @@ def edit_view_indicators(request, id):
     # only one messing around with the URL which we don't want to
     # it can as well reveal important bug, so we want it to be an explicit error
     view = get_object_or_404(ReportView, id=id)
+   
+    if request.method == 'POST': 
+            url = reverse('edit-view-indicators', args=(id,))
+            
+            create_form = IndicatorCreationForm(data=request.POST,
+                                            report_view=view, prefix='create')
+                                 
+            # use different button names if you have several forms to 
+            # separate form processing           
+            if "create-button" in request.POST:
+                if create_form.is_valid():
+                    view.add_indicator(create_form.save())
+                    return redirect(url)
+                    
+            add_form = IndicatorChooserForm(data=request.POST,
+                                            report_view=view, prefix='add')
+                  
+            if "add-button" in request.POST:                          
+                if add_form.is_valid():
+                    add_form.save()
+                    return redirect(url)
+                
+            edit_form = ViewIndicatorsForm(data=request.POST,
+                                           report_view=view)
+    
+            if "save-button" in request.POST:
+                if edit_form.is_valid():
+                    edit_form.save()
+                    return redirect(url)
+                
+    else:
+        # in django, you should add a prefix to forms if you have several of
+        # them on the same page to give a namespace to the forms data
+        # forms of edit_form are prefixed dynamically
+        create_form = IndicatorCreationForm(report_view=view, prefix='create')
+        add_form = IndicatorChooserForm(report_view=view, prefix='add')
+        edit_form = ViewIndicatorsForm(report_view=view)
+    
+
     
     return render_to_response('edit_view_indicators.html',  locals(),
                           context_instance=RequestContext(request))

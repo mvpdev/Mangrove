@@ -11,5 +11,38 @@ to manage indicators, and a form to add them.
 
 <h3>Choose the data for this report</h3>
 
+<form method="post" action="." id="edit-indicators">
+
+{% if edit_form.form_list %}
+<fieldset>
+<legend>Modify existing indicators</legend> 
+{% for form in edit_form %}
+{{ form.errors }}
+{{ form.as_p }}
+{% endfor %}
+<div class="button"><input type="submit" value="Save" name="save-button"/></div>
+</fieldset>
+{% endif %}
+
+{% if add_form.indicators %}
+<fieldset>
+<legend>Add a indicator</legend> 
+{{ add_form.errors }}
+{{ add_form.as_p }}
+<div class="button"><input type="submit" value="Add" name="add-button"/></div>
+</fieldset>
+{% endif %}
+
+<fieldset>
+<legend>Create a new indicator</legend> 
+
+<ol>
+{{ create_form.as_ul }}
+</ol>
+<div class="button"><input type="submit" value="Create" name="create-button"/></div>
+</fieldset>
+
+{% csrf_token %}
+</form>
 {% endblock %}
 

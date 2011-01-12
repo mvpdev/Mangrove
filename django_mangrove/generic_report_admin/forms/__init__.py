@@ -4,3 +4,4 @@
 
 from _report_forms import *
 from _view_forms import *
+from _indicator_forms import *

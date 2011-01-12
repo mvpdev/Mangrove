@@ -147,7 +147,12 @@ class AggregatorType(models.Model):
                 if name == slug:
                     new_data[slug] = aggreated_ref_value
                 else:
-                    new_data[name] = new_data.get(name, 0) + value
+                    new = new_data.get(name, 0)
+                    # if an indicator is added later, they will be None values
+                    if value == None or new == None:
+                        new_data[name] = None   
+                    else:
+                        new_data[name] = new_data.get(name, 0) + value
          
         # reformat it the way it was
         return [value for key, value in new_matrice.iteritems()]
